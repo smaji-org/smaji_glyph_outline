@@ -1,0 +1,19 @@
+opam-version: "2.0"
+maintainer: "zandoye@gmail.com"
+authors: [ "ZAN DoYe" ]
+homepage: "https://github.com/kandu/glyph_outline/"
+bug-reports: "https://github.com/kandu/glyph_outline/issues"
+license: "MIT"
+dev-repo: "git+https://https://github.com/kandu/glyph_outline"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "ocaml" {>= "4.08.1"}
+  "dune" {>= "1.6.0"}
+  "ezxmlm" {>= "1.0.0"}
+]
+synopsis: "glyph outline manipulation library"
+description: """
+A library to analyze, reform, compose glyph outline
+"""
