@@ -250,7 +250,7 @@ module MiniParsec = struct
       (Error (state.pos, "out of bounds"))
 
   let newline= newline_crlf <|> newline_lfcr
-    <|> newline_lf <|> newline_cr 
+    <|> newline_lf <|> newline_cr
 
 
   let int8= any |>> int_of_char

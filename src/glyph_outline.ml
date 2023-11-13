@@ -10,7 +10,7 @@ type segment=
   | Ccurve of { ctrl1: point; ctrl2:point; end': point }
   | SQcurve of point
   | SCcurve of { ctrl: point; end': point }
-  | Arc of { 
+  | Arc of {
       rx: float;
       ry: float;
       large_arc: bool;

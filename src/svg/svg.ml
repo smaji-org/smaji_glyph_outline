@@ -75,9 +75,8 @@ let xml_member_with_attr name nodes=
     Ezxmlm.Tag_not_found _-> None
 
 let load_file path=
-  let chan= open_in path in
+  In_channel.with_open_text path @@ fun chan->
   let _dtd, nodes= Ezxmlm.from_channel chan in
-  close_in chan;
   let get_paths nodes=
     Ezxmlm.members_with_attr "path" nodes
   in

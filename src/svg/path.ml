@@ -204,7 +204,7 @@ let string_of_s_cubic_desc desc=
 
 let string_of_s_cubic_desc_svg desc=
   let (f1, f2), (f3, f4)= desc.ctrl2, desc.end' in
-  sprintf "%s,%s,%s,%s" 
+  sprintf "%s,%s,%s,%s"
     (string_of_float f1)
     (string_of_float f2)
     (string_of_float f3)
@@ -217,7 +217,7 @@ let string_of_quadratic_desc desc=
 
 let string_of_quadratic_desc_svg desc=
   let (f1, f2), (f3, f4)= desc.ctrl, desc.end' in
-  sprintf "%s,%s,%s,%s" 
+  sprintf "%s,%s,%s,%s"
     (string_of_float f1)
     (string_of_float f2)
     (string_of_float f3)
@@ -235,12 +235,12 @@ let string_of_arc_desc desc=
 let string_of_arc_desc_svg desc=
   let boot_to_int= function true-> 1 | false-> 0 in
   let f1, f2, f3, b1, b2, (f4, f5)= desc.rx, desc.ry, desc.angle, (boot_to_int desc.large_arc), (boot_to_int desc.sweep), desc.end' in
-  sprintf "%s,%s,%s,%d,%d,%s,%s" 
+  sprintf "%s,%s,%s,%d,%d,%s,%s"
     (string_of_float f1)
     (string_of_float f2)
     (string_of_float f3)
     b1
-    b2 
+    b2
     (string_of_float f4)
     (string_of_float f5)
 
