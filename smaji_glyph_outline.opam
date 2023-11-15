@@ -1,10 +1,10 @@
 opam-version: "2.0"
 maintainer: "zandoye@gmail.com"
 authors: [ "ZAN DoYe" ]
-homepage: "https://github.com/kandu/glyph_outline/"
-bug-reports: "https://github.com/kandu/glyph_outline/issues"
+homepage: "https://github.com/smaji-org/smaji_glyph_outline/"
+bug-reports: "https://github.com/smaji-org/smaji_glyph_outline/issues"
 license: "MIT"
-dev-repo: "git+https://https://github.com/kandu/glyph_outline"
+dev-repo: "git+https://https://github.com/smaji-org/smaji_glyph_outline"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]

@@ -1,4 +1,14 @@
-open Glyph_outline
+(*
+ * test.ml
+ * -----------
+ * Copyright : (c) 2023 - 2023, smaji.org
+ * Copyright : (c) 2023 - 2023, ZAN DoYe <zandoye@gmail.com>
+ * Licence   : GPL2
+ *
+ * This file is a part of Smaji_glyph_outline.
+ *)
+
+open Smaji_glyph_outline
 
 
 let%expect_test "move"=
@@ -272,7 +282,7 @@ let%expect_test "fit_frame_continuous"=
     </svg>"]
 
 let%expect_test "load_file"=
-  (match Svg.load_file "/home/kandu/pro/smaji/dynamic_glyph/svg/a.svg" with
+  (match Svg.load_file "a.svg" with
   | Some svg-> svg |> Svg.to_string |> print_endline
   | None-> print_endline "");
   [%expect "
