@@ -22,7 +22,6 @@ type command_tag=
   | Cmd_L | Cmd_l | Cmd_H | Cmd_h | Cmd_V | Cmd_v
   | Cmd_C | Cmd_c | Cmd_S | Cmd_s
   | Cmd_Q | Cmd_q | Cmd_T | Cmd_t
-  | Cmd_A | Cmd_a
   | Cmd_Z | Cmd_z
 
 type cubic_desc= {
@@ -67,10 +66,6 @@ type command=
   | Cmd_q of quadratic_desc
   | Cmd_T of point
   | Cmd_t of point
-
-  | Cmd_A of arc_desc
-  | Cmd_a of arc_desc
-
 
 type start_point=
   | Absolute of point
@@ -117,13 +112,6 @@ let command_adjust_position ~dx ~dy cmd=
   | Cmd_T point-> Cmd_T (adj_p point)
   | Cmd_t _ as t-> t
 
-  | Cmd_A desc-> Cmd_A { desc with
-      rx= desc.rx +. dx;
-      ry= desc.ry +. dy;
-      end'= adj_p desc.end';
-    }
-  | Cmd_a _ as a-> a
-
 let command_adjust_scale ~x ~y cmd=
   let scale_p= scale_p ~x ~y in
   match cmd with
@@ -163,17 +151,6 @@ let command_adjust_scale ~x ~y cmd=
     }
   | Cmd_T point-> Cmd_T (scale_p point)
   | Cmd_t point-> Cmd_t (scale_p point)
-
-  | Cmd_A desc-> Cmd_A { desc with
-      rx= desc.rx *. x;
-      ry= desc.ry *. y;
-      end'= scale_p desc.end';
-    }
-  | Cmd_a desc-> Cmd_a { desc with
-      rx= desc.rx *. x;
-      ry= desc.ry *. y;
-      end'= scale_p desc.end';
-    }
 
 open Printf
 
@@ -272,9 +249,6 @@ let string_of_command= function
   | Cmd_T point-> point |> string_of_point |> sprintf "T %s"
   | Cmd_t point-> point |> string_of_point |> sprintf "t %s"
 
-  | Cmd_A arc_desc-> arc_desc |> string_of_arc_desc |> sprintf "A %s"
-  | Cmd_a arc_desc-> arc_desc |> string_of_arc_desc |> sprintf "a %s"
-
 
 let string_of_command_svg= function
   | Cmd_L point-> point |> string_of_point |> sprintf "L %s"
@@ -293,9 +267,6 @@ let string_of_command_svg= function
   | Cmd_q quadratic_desc-> quadratic_desc |> string_of_quadratic_desc_svg |> sprintf "q %s"
   | Cmd_T point-> point |> string_of_point |> sprintf "T %s"
   | Cmd_t point-> point |> string_of_point |> sprintf "t %s"
-
-  | Cmd_A arc_desc-> arc_desc |> string_of_arc_desc_svg |> sprintf "A %s"
-  | Cmd_a arc_desc-> arc_desc |> string_of_arc_desc_svg |> sprintf "a %s"
 
 
 type sub= {
@@ -425,11 +396,6 @@ let get_frame_sub ?(previous=(0.,0.)) sub=
         let point= point_add prev point in
         let frame= frame_update point frame in
         (frame, point)
-
-      | Cmd_A arc_desc-> (frame, arc_desc.end')
-      | Cmd_a arc_desc->
-        let point= point_add prev arc_desc.end' in
-        (frame, point)
       )
 
 let get_frame t=
@@ -531,9 +497,6 @@ module Parser = struct
     | Cmd_q of quadratic_desc list
     | Cmd_T of point list
     | Cmd_t of point list
-
-    | Cmd_A of arc_desc list
-    | Cmd_a of arc_desc list
 
     | Cmd_Z | Cmd_z
 
@@ -745,16 +708,6 @@ module Parser = struct
     let* points= sepStartBy1 (option spaces) point in
     return @@ Cmd_t points
 
-  let cmd_A=
-    let* _= tag_A in
-    let* descs= sepStartBy1 (option spaces) arc_desc in
-    return @@ Cmd_A descs
-
-  let cmd_a=
-    let* _= tag_a in
-    let* descs= sepStartBy1 (option spaces) arc_desc in
-    return @@ Cmd_a descs
-
   let cmd_Z=let* _= tag_Z in return Cmd_Z
   let cmd_z= let* _=tag_z in return Cmd_z
 
@@ -764,7 +717,6 @@ module Parser = struct
       <|> cmd_L <|> cmd_l <|> cmd_H <|> cmd_h <|> cmd_V <|> cmd_v
       <|> cmd_C <|> cmd_c <|> cmd_S <|> cmd_s
       <|> cmd_Q <|> cmd_q <|> cmd_T <|> cmd_t
-      <|> cmd_A <|> cmd_a
       <|> cmd_Z <|> cmd_z)
 end
 
@@ -861,20 +813,6 @@ let sub_of_parser_commands (commands:Parser.command list)=
           let commands, remaining= of_parser_commands (Cmd_t points :: tl) in
           Cmd_t point :: commands, remaining
         | []-> of_parser_commands tl)
-
-      | Cmd_A descs->
-        (match descs with
-        | desc::descs->
-          let commands, remaining= of_parser_commands (Cmd_A descs :: tl) in
-          Cmd_A desc :: commands, remaining
-        | []-> of_parser_commands tl)
-      | Cmd_a descs->
-        (match descs with
-        | desc::descs->
-          let commands, remaining= of_parser_commands (Cmd_a descs :: tl) in
-          Cmd_a desc :: commands, remaining
-        | []-> of_parser_commands tl)
-
       | Cmd_Z | Cmd_z-> [], tl
   in
   match commands with
