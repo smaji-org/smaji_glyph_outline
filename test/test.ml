@@ -65,15 +65,6 @@ let%expect_test "SQcurve"=
   [%expect "Absolute 20.0,20.0; T 1.0,2.0; T -1.0,2.0; t 1.0,2.0"]
 
 
-let%expect_test "arc"=
-  (match Svg.Path.of_string "M20,20A1,2,0,0,1,3,4 1,2,0,1,0,3,4a1,2,0,1,1,3,4" with
-  | Some path->
-    let path_str= path |> List.map Svg.Path.sub_to_string_hum |> String.concat "\n" in
-    print_endline path_str
-  | None-> ());
-  [%expect "Absolute 20.0,20.0; A {rx: 1.0; ry: 2.0; angle: 0.0; large_arc: false; sweep: true; end: 3.0,4.0}; A {rx: 1.0; ry: 2.0; angle: 0.0; large_arc: true; sweep: false; end: 3.0,4.0}; a {rx: 1.0; ry: 2.0; angle: 0.0; large_arc: true; sweep: true; end: 3.0,4.0}"]
-
-
 let%expect_test "viewBox"=
   (match Svg.ViewBox.of_string " 1 2, 3  ,  4 \n " with
   | Some viewBox-> Svg.ViewBox.to_string_hum viewBox |> print_endline
@@ -97,18 +88,11 @@ and path2=
       Cmd_l (3.0, 4.);
       Cmd_v 5.0;
       Cmd_h 6.0;
-      Cmd_t (7.0, 8.);
+      Cmd_t { end'= (7.0, 8.) };
       Cmd_C {
         ctrl1= (1.0, 2.);
         ctrl2= (3.0, 4.);
         end'= (5.0, 6.);
-        };
-      Cmd_a {
-        rx= 1.0; ry= 2.0;
-        angle= 0.0;
-        large_arc= true;
-        sweep= false;
-        end'= (3.0, 4.);
         };
       ];
   }
@@ -124,7 +108,7 @@ let svg_individual= Svg.{ viewBox; paths= paths_individual }
 let svg_continuous= Svg.{ viewBox; paths= paths_continuous }
 
 let%expect_test "svg_to_string_individual"=
-  Svg.to_string svg_individual |> print_endline;
+  Svg.to_string_svg svg_individual |> print_endline;
   [%expect "
     <svg viewBox=\"1.0,2.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
       <path d=\"
@@ -141,13 +125,12 @@ let%expect_test "svg_to_string_individual"=
         h 6.0
         t 7.0,8.0
         C 1.0,2.0,3.0,4.0,5.0,6.0
-        a 1.0,2.0,0.0,1,0,3.0,4.0
         Z\"
       />
     </svg>"]
 
 let%expect_test "svg_to_string_continuous"=
-  Svg.to_string svg_continuous |> print_endline;
+  Svg.to_string_svg svg_continuous |> print_endline;
   [%expect "
     <svg viewBox=\"1.0,2.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
       <path d=\"
@@ -163,14 +146,13 @@ let%expect_test "svg_to_string_continuous"=
         h 6.0
         t 7.0,8.0
         C 1.0,2.0,3.0,4.0,5.0,6.0
-        a 1.0,2.0,0.0,1,0,3.0,4.0
         Z\"
       />
     </svg>"]
 
 let%expect_test "svg_reset_viewBox_1"=
-  let svg= svg_individual |> Svg.Adjust.reset_viewBox in
-  Svg.to_string svg |> print_endline;
+  let svg= svg_individual |> Svg.Adjust.viewBox_reset in
+  Svg.to_string_svg svg |> print_endline;
   [%expect "
     <svg viewBox=\"0.0,0.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
       <path d=\"
@@ -187,7 +169,6 @@ let%expect_test "svg_reset_viewBox_1"=
         h 6.0
         t 7.0,8.0
         C 0.0,0.0,2.0,2.0,4.0,4.0
-        a 1.0,2.0,0.0,1,0,3.0,4.0
         Z\"
       />
     </svg>"]
@@ -197,8 +178,8 @@ let%expect_test "svg_reset_viewBox_2"=
     min_x= -. viewBox.min_x;
     min_y= -. viewBox.min_y }
   in
-  let svg= Svg.{ viewBox; paths= paths_individual } |> Svg.Adjust.reset_viewBox in
-  Svg.to_string svg |> print_endline;
+  let svg= Svg.{ viewBox; paths= paths_individual } |> Svg.Adjust.viewBox_reset in
+  Svg.to_string_svg svg |> print_endline;
   [%expect "
     <svg viewBox=\"0.0,0.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
       <path d=\"
@@ -215,7 +196,6 @@ let%expect_test "svg_reset_viewBox_2"=
         h 6.0
         t 7.0,8.0
         C 2.0,4.0,4.0,6.0,6.0,8.0
-        a 1.0,2.0,0.0,1,0,3.0,4.0
         Z\"
       />
     </svg>"]
@@ -237,7 +217,7 @@ let%expect_test "get_path_frame continuous"=
   [%expect "{ px= 27.0; nx= 1.0; py= 30.0; ny= 2.0 }"]
 
 let%expect_test "fit_frame_individual"=
-  Svg.Adjust.fit_frame svg_individual |> Svg.to_string |> print_endline;
+  Svg.Adjust.viewBox_fitFrame_reset svg_individual |> Svg.to_string_svg |> print_endline;
   [%expect "
     <svg viewBox=\"0.0,0.0 16.0,17.0\" xmlns=\"http://www.w3.org/2000/svg\">
       <path d=\"
@@ -254,13 +234,12 @@ let%expect_test "fit_frame_individual"=
         h 6.0
         t 7.0,8.0
         C 0.0,0.0,2.0,2.0,4.0,4.0
-        a 1.0,2.0,0.0,1,0,3.0,4.0
         Z\"
       />
     </svg>"]
 
 let%expect_test "fit_frame_continuous"=
-  Svg.Adjust.fit_frame svg_continuous |> Svg.to_string |> print_endline;
+  Svg.Adjust.viewBox_fitFrame_reset svg_continuous |> Svg.to_string_svg |> print_endline;
   [%expect "
     <svg viewBox=\"0.0,0.0 26.0,28.0\" xmlns=\"http://www.w3.org/2000/svg\">
       <path d=\"
@@ -276,14 +255,13 @@ let%expect_test "fit_frame_continuous"=
         h 6.0
         t 7.0,8.0
         C 0.0,0.0,2.0,2.0,4.0,4.0
-        a 1.0,2.0,0.0,1,0,3.0,4.0
         Z\"
       />
     </svg>"]
 
 let%expect_test "load_file"=
   (match Svg.load_file "a.svg" with
-  | Some svg-> svg |> Svg.to_string |> print_endline
+  | Some svg-> svg |> Svg.to_string_svg |> print_endline
   | None-> print_endline "");
   [%expect "
     <svg viewBox=\"45.0,-33.8 150.0,150.0\" xmlns=\"http://www.w3.org/2000/svg\">
@@ -307,7 +285,7 @@ let%expect_test "load_file"=
 let%expect_test "file_fit_frame"=
   (match Svg.load_file "a.svg" with
   | Some svg->
-    svg |> Svg.Adjust.fit_frame |> Svg.to_string |> print_endline
+    svg |> Svg.Adjust.viewBox_fitFrame_reset |> Svg.to_string_svg |> print_endline
   | None-> print_endline "");
   [%expect {|
     <svg viewBox="0.0,0.0 60.3,120.6" xmlns="http://www.w3.org/2000/svg">

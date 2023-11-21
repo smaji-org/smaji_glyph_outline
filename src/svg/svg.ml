@@ -16,7 +16,7 @@ type t= {
   paths: Path.t list;
 }
 
-let to_string ?(indent=0) t=
+let to_string_svg ?(indent=0) t=
   let step= 2 in
   let open Printf in
   let viewBox= ViewBox.to_string_svg t.viewBox in
@@ -39,48 +39,46 @@ let set_viewBox viewBox t=
   { t with viewBox= viewBox }
 
 module Adjust = struct
-  let reset_viewBox t=
+  let viewBox_reset t=
     let dx= -. t.viewBox.min_x
     and dy= -. t.viewBox.min_y in
     let viewBox= { t.viewBox with min_x= 0.; min_y= 0. } in
-    let paths= t.paths |> List.map (Path.Adjust.position ~dx ~dy) in
+    let paths= t.paths |> List.map (Path.Adjust.translate ~dx ~dy) in
     { viewBox; paths }
 
-  let fit_frame t=
-    match Path.get_frame_paths t.paths with
-    | None-> t
-    | Some frame->
-      let height= frame.py -. frame.ny
+  let viewBox_fitFrame t= t.paths
+    |> Path.get_frame_paths
+    |> Option.map @@ fun frame->
+      let height= frame.Path.py -. frame.ny
       and width= frame.px -. frame.nx
       and min_x= frame.nx
       and min_y= frame.ny in
-      let viewBox= ViewBox.{ min_x; min_y; width; height } in
-      { t with viewBox } |> reset_viewBox
+      ViewBox.{ min_x; min_y; width; height }
+
+  let viewBox_fitFrame_reset t=
+    match viewBox_fitFrame t with
+    | None-> t
+    | Some viewBox->
+      { t with viewBox } |> viewBox_reset
 
   let scale ~x ~y svg=
     let viewBox= svg.viewBox
     and paths= svg.paths in
-    let viewBox= { viewBox with
+    let (*viewBox= { viewBox with
       width= viewBox.width *. x;
       height= viewBox.height *. y;
       }
-    and paths= List.map (Path.Adjust.scale ~x ~y) paths in
+    and*) paths= List.map (Path.Adjust.scale ~x ~y) paths in
     { viewBox; paths }
 
   let translate ~dx ~dy svg=
-    let paths= List.map (Path.Adjust.position ~dx ~dy) svg.paths in
+    let paths= List.map (Path.Adjust.translate ~dx ~dy) svg.paths in
     { svg with paths }
 end
 
 let xml_member name nodes=
   try
     Some (Ezxmlm.member name nodes)
-  with
-    Ezxmlm.Tag_not_found _-> None
-
-let xml_member_with_attr name nodes=
-  try
-    Some (Ezxmlm.member_with_attr name nodes)
   with
     Ezxmlm.Tag_not_found _-> None
 

@@ -12,18 +12,6 @@ open Utils
 
 type point= float * float
 
-let point_add p1 p2=
-  let f1, f2= p1
-  and f3, f4= p2 in
-  f1+.f3, f2+.f4
-
-type command_tag=
-  | Cmd_M | Cmd_m
-  | Cmd_L | Cmd_l | Cmd_H | Cmd_h | Cmd_V | Cmd_v
-  | Cmd_C | Cmd_c | Cmd_S | Cmd_s
-  | Cmd_Q | Cmd_q | Cmd_T | Cmd_t
-  | Cmd_Z | Cmd_z
-
 type cubic_desc= {
   ctrl1: point;
   ctrl2: point;
@@ -39,6 +27,8 @@ type quadratic_desc= {
   ctrl: point;
   end': point
 }
+
+type s_quadratic_desc = { end' : point; }
 
 type arc_desc= {
   rx: float;
@@ -64,26 +54,34 @@ type command=
 
   | Cmd_Q of quadratic_desc
   | Cmd_q of quadratic_desc
-  | Cmd_T of point
-  | Cmd_t of point
+  | Cmd_T of s_quadratic_desc
+  | Cmd_t of s_quadratic_desc
+
+  | Cmd_A of arc_desc
+  | Cmd_a of arc_desc
 
 type start_point=
   | Absolute of point
   | Relative of point
 
-let adj_p ~dx ~dy (x, y)= (x+.dx, y+.dy)
-let scale_p ~x ~y (px, py)= (x*.px, y*.py)
+let point_add p1 p2=
+  let f1, f2= p1
+  and f3, f4= p2 in
+  f1+.f3, f2+.f4
+
+let point_translate ~dx ~dy (x, y)= (x+.dx, y+.dy)
+let point_scale ~x ~y (px, py)= (x*.px, y*.py)
 
 let start_point_adjust_point ~dx ~dy= function
-  | Absolute point-> Absolute (adj_p ~dx ~dy point)
+  | Absolute point-> Absolute (point_translate ~dx ~dy point)
   | Relative _ as r-> r
 
 let start_point_adjust_scale ~x ~y= function
-  | Absolute point-> Absolute (scale_p ~x ~y point)
-  | Relative point-> Relative (scale_p ~x ~y point)
+  | Absolute point-> Absolute (point_scale ~x ~y point)
+  | Relative point-> Relative (point_scale ~x ~y point)
 
 let command_adjust_position ~dx ~dy cmd=
-  let adj_p= adj_p ~dx ~dy in
+  let adj_p= point_translate ~dx ~dy in
   match cmd with
   | Cmd_L point-> Cmd_L (adj_p point)
   | Cmd_l _ as l-> l
@@ -109,11 +107,18 @@ let command_adjust_position ~dx ~dy cmd=
       end'= adj_p desc.end';
     }
   | Cmd_q _ as q-> q
-  | Cmd_T point-> Cmd_T (adj_p point)
+  | Cmd_T desc-> Cmd_T { end'= adj_p desc.end' }
   | Cmd_t _ as t-> t
 
+  | Cmd_A desc-> Cmd_A { desc with
+      rx= desc.rx +. dx;
+      ry= desc.ry +. dy;
+      end'= adj_p desc.end';
+    }
+  | Cmd_a _ as a-> a
+
 let command_adjust_scale ~x ~y cmd=
-  let scale_p= scale_p ~x ~y in
+  let scale_p= point_scale ~x ~y in
   match cmd with
   | Cmd_L point-> Cmd_L (scale_p point)
   | Cmd_l point-> Cmd_l (scale_p point)
@@ -149,8 +154,19 @@ let command_adjust_scale ~x ~y cmd=
       ctrl= scale_p desc.ctrl;
       end'= scale_p desc.end';
     }
-  | Cmd_T point-> Cmd_T (scale_p point)
-  | Cmd_t point-> Cmd_t (scale_p point)
+  | Cmd_T desc-> Cmd_T { end'= scale_p desc.end' }
+  | Cmd_t desc-> Cmd_t { end'= scale_p desc.end' }
+
+  | Cmd_A desc-> Cmd_A { desc with
+      rx= desc.rx *. x;
+      ry= desc.ry *. y;
+      end'= scale_p desc.end';
+    }
+  | Cmd_a desc-> Cmd_a { desc with
+      rx= desc.rx *. x;
+      ry= desc.ry *. y;
+      end'= scale_p desc.end';
+    }
 
 open Printf
 
@@ -246,8 +262,11 @@ let string_of_command= function
 
   | Cmd_Q quadratic_desc-> quadratic_desc |> string_of_quadratic_desc |> sprintf "Q %s"
   | Cmd_q quadratic_desc-> quadratic_desc |> string_of_quadratic_desc |> sprintf "q %s"
-  | Cmd_T point-> point |> string_of_point |> sprintf "T %s"
-  | Cmd_t point-> point |> string_of_point |> sprintf "t %s"
+  | Cmd_T desc-> desc.end' |> string_of_point |> sprintf "T %s"
+  | Cmd_t desc-> desc.end' |> string_of_point |> sprintf "t %s"
+
+  | Cmd_A arc_desc-> arc_desc |> string_of_arc_desc |> sprintf "A %s"
+  | Cmd_a arc_desc-> arc_desc |> string_of_arc_desc |> sprintf "a %s"
 
 
 let string_of_command_svg= function
@@ -265,8 +284,11 @@ let string_of_command_svg= function
 
   | Cmd_Q quadratic_desc-> quadratic_desc |> string_of_quadratic_desc_svg |> sprintf "Q %s"
   | Cmd_q quadratic_desc-> quadratic_desc |> string_of_quadratic_desc_svg |> sprintf "q %s"
-  | Cmd_T point-> point |> string_of_point |> sprintf "T %s"
-  | Cmd_t point-> point |> string_of_point |> sprintf "t %s"
+  | Cmd_T desc-> desc.end' |> string_of_point |> sprintf "T %s"
+  | Cmd_t desc-> desc.end' |> string_of_point |> sprintf "t %s"
+
+  | Cmd_A arc_desc-> arc_desc |> string_of_arc_desc_svg |> sprintf "A %s"
+  | Cmd_a arc_desc-> arc_desc |> string_of_arc_desc_svg |> sprintf "a %s"
 
 
 type sub= {
@@ -389,12 +411,17 @@ let get_frame_sub ?(previous=(0.,0.)) sub=
         and end'= point_add desc.end' prev in
         let frame= frame |> frame_update ctrl |> frame_update end' in
         (frame, end')
-      | Cmd_T point->
+      | Cmd_T desc->
+        let frame= frame_update desc.end' frame in
+        (frame, desc.end')
+      | Cmd_t desc->
+        let point= point_add prev desc.end' in
         let frame= frame_update point frame in
         (frame, point)
-      | Cmd_t point->
-        let point= point_add prev point in
-        let frame= frame_update point frame in
+
+      | Cmd_A arc_desc-> (frame, arc_desc.end')
+      | Cmd_a arc_desc->
+        let point= point_add prev arc_desc.end' in
         (frame, point)
       )
 
@@ -423,8 +450,9 @@ let get_frame_paths paths=
         | None-> Some frame)
       | None-> acc)
 
+(** {2 Module Adjust } *)
 module Adjust = struct
-  let position_sub ~dx ~dy sub= {
+  let translate_sub ~dx ~dy sub= {
     start= start_point_adjust_point ~dx ~dy sub.start;
     segments= List.map (command_adjust_position ~dx ~dy) sub.segments;
   }
@@ -434,7 +462,7 @@ module Adjust = struct
     segments= List.map (command_adjust_scale ~x ~y) sub.segments;
   }
 
-  let position ~dx ~dy t= List.map (position_sub ~dx ~dy) t
+  let translate ~dx ~dy t= List.map (translate_sub ~dx ~dy) t
 
   let scale ~x ~y t= List.map (scale_sub ~x ~y) t
 end
@@ -497,6 +525,9 @@ module Parser = struct
     | Cmd_q of quadratic_desc list
     | Cmd_T of point list
     | Cmd_t of point list
+
+    | Cmd_A of arc_desc list
+    | Cmd_a of arc_desc list
 
     | Cmd_Z | Cmd_z
 
@@ -708,6 +739,16 @@ module Parser = struct
     let* points= sepStartBy1 (option spaces) point in
     return @@ Cmd_t points
 
+  let cmd_A=
+    let* _= tag_A in
+    let* descs= sepStartBy1 (option spaces) arc_desc in
+    return @@ Cmd_A descs
+
+  let cmd_a=
+    let* _= tag_a in
+    let* descs= sepStartBy1 (option spaces) arc_desc in
+    return @@ Cmd_a descs
+
   let cmd_Z=let* _= tag_Z in return Cmd_Z
   let cmd_z= let* _=tag_z in return Cmd_z
 
@@ -717,6 +758,7 @@ module Parser = struct
       <|> cmd_L <|> cmd_l <|> cmd_H <|> cmd_h <|> cmd_V <|> cmd_v
       <|> cmd_C <|> cmd_c <|> cmd_S <|> cmd_s
       <|> cmd_Q <|> cmd_q <|> cmd_T <|> cmd_t
+      <|> cmd_A <|> cmd_a
       <|> cmd_Z <|> cmd_z)
 end
 
@@ -805,14 +847,28 @@ let sub_of_parser_commands (commands:Parser.command list)=
         (match points with
         | point::points->
           let commands, remaining= of_parser_commands (Cmd_T points :: tl) in
-          Cmd_T point :: commands, remaining
+          Cmd_T { end'= point } :: commands, remaining
         | []-> of_parser_commands tl)
       | Cmd_t points->
         (match points with
         | point::points->
           let commands, remaining= of_parser_commands (Cmd_t points :: tl) in
-          Cmd_t point :: commands, remaining
+          Cmd_t { end'= point } :: commands, remaining
         | []-> of_parser_commands tl)
+
+      | Cmd_A descs->
+        (match descs with
+        | desc::descs->
+          let commands, remaining= of_parser_commands (Cmd_A descs :: tl) in
+          Cmd_A desc :: commands, remaining
+        | []-> of_parser_commands tl)
+      | Cmd_a descs->
+        (match descs with
+        | desc::descs->
+          let commands, remaining= of_parser_commands (Cmd_a descs :: tl) in
+          Cmd_a desc :: commands, remaining
+        | []-> of_parser_commands tl)
+
       | Cmd_Z | Cmd_z-> [], tl
   in
   match commands with
