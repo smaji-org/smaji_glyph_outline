@@ -44,5 +44,5 @@ val load_file : string -> t option
 (** [load_file path] returns [Some t] if the path point a legal svg glyph outline file, otherwise, [None] is returned *)
 
 val load_file_exn : string -> t
-(** [load_file_exn path] returns [t] if the path point a legal svg glyph outline file, otherwise error [Invalid_argument] is raised *)
+(** [load_file_exn path] returns [t] if the path point a legal svg glyph outline file, otherwise error [Failure "load_file_exn"] is raised *)
 

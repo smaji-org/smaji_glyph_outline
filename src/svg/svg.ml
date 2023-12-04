@@ -106,5 +106,7 @@ let load_file path=
   | None-> None
 
 let load_file_exn path=
-  path |> load_file |> Option.get
+  match load_file path with
+  | Some svg-> svg
+  | None-> failwith "load_file"
 

@@ -8,20 +8,9 @@
  * This file is a part of Smaji_glyph_outline.
  *)
 
+module Outline= Outline
 module Svg= Svg
+module Glif= Glif
 module Utils= Utils
 
-type point= float * float
-
-type segment=
-  | Line of point
-  | Qcurve of { ctrl: point; end': point }
-  | Ccurve of { ctrl1: point; ctrl2:point; end': point }
-  | SQcurve of point
-  | SCcurve of { ctrl: point; end': point }
-
-type path= {
-  start: point;
-  segments: segment list;
-}
 

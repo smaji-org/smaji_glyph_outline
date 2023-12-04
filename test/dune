@@ -2,6 +2,6 @@
   (name test)
   (flags (:standard -safe-string))
   (libraries smaji_glyph_outline)
-  (inline_tests (deps a.svg))
+  (inline_tests (deps a.svg a.xml))
   (preprocess (pps ppx_expect)))
 
