@@ -362,5 +362,41 @@ module Glif = struct
         Ccurve { ctrl1: (193.0,-10.0); ctrl2: (237.0,25.0); end: (237.0,88.0) }
         Ccurve { ctrl1: (237.0,152.0); ctrl2: (193.0,187.0); end: (134.0,187.0) }
       }"]
+
+  let%expect_test "path_of_points"=
+    let open Raw in
+    "b.xml" |> load_file |> Option.iter @@ fun glif->
+      glif.elements |> List.iter (function
+        | Component _-> ()
+        | Contour contour->
+          contour.points
+            |> Glif.path_of_points
+            |> Option.iter @@ fun path->
+              path |> Outline.path_to_string |> print_endline
+        );
+    [%expect "
+      {
+        start: (297.0,-12.0)
+        Ccurve { ctrl1: (408.0,-12.0); ctrl2: (508.0,85.0); end: (508.0,251.0) }
+        Ccurve { ctrl1: (508.0,401.0); ctrl2: (440.0,498.0); end: (315.0,498.0) }
+        Ccurve { ctrl1: (261.0,498.0); ctrl2: (207.0,469.0); end: (162.0,431.0) }
+        Line (165.0,518.0)
+        Line (165.0,712.0)
+        Line (82.0,712.0)
+        Line (82.0,0.0)
+        Line (148.0,0.0)
+        Line (156.0,50.0)
+        Line (159.0,50.0)
+        Ccurve { ctrl1: (202.0,11.0); ctrl2: (252.0,-12.0); end: (297.0,-12.0) }
+      }
+      {
+        start: (283.0,58.0)
+        Ccurve { ctrl1: (251.0,58.0); ctrl2: (207.0,71.0); end: (165.0,108.0) }
+        Line (165.0,362.0)
+        Ccurve { ctrl1: (211.0,406.0); ctrl2: (253.0,428.0); end: (294.0,428.0) }
+        Ccurve { ctrl1: (385.0,428.0); ctrl2: (422.0,357.0); end: (422.0,250.0) }
+        Ccurve { ctrl1: (422.0,130.0); ctrl2: (363.0,58.0); end: (283.0,58.0) }
+      }"]
+
 end
 
