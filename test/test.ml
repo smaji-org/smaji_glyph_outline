@@ -343,14 +343,14 @@ module Glif = struct
       offcurve 237.0 25.0
       curve 237.0 88.0"]
 
-  let%expect_test "path_of_points"=
+  let%expect_test "outline_of_points"=
     let open Raw in
     "a.xml" |> load_file |> Option.iter @@ fun glif->
       glif.elements |> List.iter (function
         | Component _-> ()
         | Contour contour->
           contour.points
-            |> Glif.path_of_points
+            |> Glif.outline_of_points
             |> Option.iter @@ fun path->
               path |> Outline.path_to_string |> print_endline
         );
@@ -363,14 +363,14 @@ module Glif = struct
         Ccurve { ctrl1: (237.0,152.0); ctrl2: (193.0,187.0); end: (134.0,187.0) }
       }"]
 
-  let%expect_test "path_of_points"=
+  let%expect_test "outline_of_points"=
     let open Raw in
     "b.xml" |> load_file |> Option.iter @@ fun glif->
       glif.elements |> List.iter (function
         | Component _-> ()
         | Contour contour->
           contour.points
-            |> Glif.path_of_points
+            |> Glif.outline_of_points
             |> Option.iter @@ fun path->
               path |> Outline.path_to_string |> print_endline
         );
@@ -397,6 +397,58 @@ module Glif = struct
         Ccurve { ctrl1: (385.0,428.0); ctrl2: (422.0,357.0); end: (422.0,250.0) }
         Ccurve { ctrl1: (422.0,130.0); ctrl2: (363.0,58.0); end: (283.0,58.0) }
       }"]
+
+  let%expect_test "outline_to_points"=
+    let open Raw in
+    "b.xml" |> load_file |> Option.iter @@ fun glif->
+      glif.elements |> List.iter (function
+        | Component _-> ()
+        | Contour contour->
+          print_endline "path";
+          contour.points
+            |> Glif.outline_of_points
+            |> Option.iter @@ fun path->
+              path
+                |> Glif.outline_to_points
+                |> List.map Glif.Raw.contour_point_to_string
+                |> String.concat "\n"
+                |> print_endline
+        );
+    [%expect "
+      path
+      offcurve (408.0,-12.0)
+      offcurve (508.0,85.0)
+      curve (508.0,251.0)
+      offcurve (508.0,401.0)
+      offcurve (440.0,498.0)
+      curve (315.0,498.0)
+      offcurve (261.0,498.0)
+      offcurve (207.0,469.0)
+      curve (162.0,431.0)
+      line (165.0,518.0)
+      line (165.0,712.0)
+      line (82.0,712.0)
+      line (82.0,0.0)
+      line (148.0,0.0)
+      line (156.0,50.0)
+      line (159.0,50.0)
+      offcurve (202.0,11.0)
+      offcurve (252.0,-12.0)
+      curve (297.0,-12.0)
+      path
+      offcurve (251.0,58.0)
+      offcurve (207.0,71.0)
+      curve (165.0,108.0)
+      line (165.0,362.0)
+      offcurve (211.0,406.0)
+      offcurve (253.0,428.0)
+      curve (294.0,428.0)
+      offcurve (385.0,428.0)
+      offcurve (422.0,357.0)
+      curve (422.0,250.0)
+      offcurve (422.0,130.0)
+      offcurve (363.0,58.0)
+      curve (283.0,58.0)"]
 
 end
 

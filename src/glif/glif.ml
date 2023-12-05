@@ -64,6 +64,12 @@ module Raw = struct
     points: contour_point list;
   }
 
+  let contour_point_to_string point=
+    Printf.sprintf "%s (%s,%s)"
+      (contour_point_type_to_string point. point_type)
+      (Utils.string_of_float point.x)
+      (Utils.string_of_float point.y)
+
   let component_default= {
     base= None;
     xScale= 1.;
@@ -195,7 +201,7 @@ type ('a, 'b) either=
   | Left of 'a
   | Right of 'b
 
-let path_of_points (points:Raw.contour_point list)=
+let outline_of_points (points:Raw.contour_point list)=
   let rec find_start elt=
     match elt.Circle.value.Raw.point_type with
     | Line-> elt
@@ -255,4 +261,61 @@ let path_of_points (points:Raw.contour_point list)=
     let segments= build building start.right in
     let start= (start.value.x, start.value.y) in
     Some Outline.{ start; segments }
+
+let outline_to_points (path:Outline.path)=
+  let dummy= ((0.,0.),(0.,0.)) in
+  let rec to_points prev(*used to calc the reflection of the control point*) (segments:Outline.segment list)=
+    match segments with
+    | []-> []
+    | segment::tl->
+      match segment with
+      | Line (x, y)-> Raw.{ x; y; point_type= Line } :: to_points dummy tl
+      | Qcurve { ctrl; end'; }->
+        let p1=
+          let (x,y)= ctrl in
+          Raw.{ x; y; point_type= Offcurve }
+        and p2=
+          let (x,y)= end' in
+          Raw.{ x; y; point_type= Qcurve } in
+        p1::p2 :: to_points (ctrl, end') tl
+      | Ccurve { ctrl1; ctrl2; end'; }->
+        let p1=
+          let (x,y)= ctrl1 in
+          Raw.{ x; y; point_type= Offcurve }
+        and p2=
+          let (x,y)= ctrl2 in
+          Raw.{ x; y; point_type= Offcurve }
+        and p3=
+          let (x,y)= end' in
+          Raw.{ x; y; point_type= Curve } in
+        p1::p2::p3 :: to_points (ctrl2, end') tl
+      | SQcurve end'->
+        let ctrl=
+          let ((x1,y1), (x2,y2))= prev in
+          (x2 *. 2. -. x1, y2 *. 2. -. y1)
+        in
+        let p1=
+          let (x,y)= ctrl in
+          Raw.{ x; y; point_type= Offcurve }
+        and p2=
+          let (x,y)= end' in
+          Raw.{ x; y; point_type= Qcurve } in
+        p1::p2 :: to_points (ctrl, end') tl
+      | SCcurve { ctrl; end'; } ->
+        let ctrl1=
+          let ((x1,y1), (x2,y2))= prev in
+          (x2 *. 2. -. x1, y2 *. 2. -. y1)
+        in
+        let p1=
+          let (x,y)= ctrl1 in
+          Raw.{ x; y; point_type= Offcurve }
+        and p2=
+          let (x,y)= ctrl in
+          Raw.{ x; y; point_type= Offcurve }
+        and p3=
+          let (x,y)= end' in
+          Raw.{ x; y; point_type= Curve } in
+        p1::p2::p3 :: to_points (ctrl, end') tl
+  in
+  to_points dummy path.segments
 
