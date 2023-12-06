@@ -900,3 +900,77 @@ let of_string str=
     Some t
   | Error _-> None
 
+let sub_of_outline (outline:Outline.path)=
+  let start= Absolute outline.start
+  and segments= outline.segments |> List.map @@ function
+    | Outline.Line point-> Cmd_L point
+    | Qcurve { ctrl; end'; }-> Cmd_Q { ctrl; end' }
+    | Ccurve { ctrl1; ctrl2; end'; }-> Cmd_C { ctrl1; ctrl2; end' }
+    | SQcurve end'-> Cmd_T { end' }
+    | SCcurve { ctrl; end'; }-> Cmd_S { ctrl2= ctrl; end' }
+  in
+  { start; segments }
+
+let sub_to_outline ?(prev=(0.,0.)) sub=
+  let rec to_outline prev segments=
+    match segments with
+    | []-> []
+    | Cmd_L point :: tl-> Outline.Line point :: to_outline point tl
+    | Cmd_l point :: tl->
+      let next= point_add prev point in
+      Line next :: to_outline next tl
+    | Cmd_H float :: tl->
+      let (_x, y)= prev in
+      let next= (float, y) in
+      Line next :: to_outline next tl
+    | Cmd_h float :: tl->
+      let (x, y)= prev in
+      let next= (x+.float, y) in
+      Line next :: to_outline next tl
+    | Cmd_V float :: tl->
+      let (x, _y)= prev in
+      let next= (x, float) in
+      Line next :: to_outline next tl
+    | Cmd_v float :: tl->
+      let (x, y)= prev in
+      let next= (x, y+.float) in
+      Line next :: to_outline next tl
+
+    | Cmd_C {ctrl1;ctrl2;end'} :: tl->
+      Ccurve {ctrl1;ctrl2;end'} :: to_outline end' tl
+    | Cmd_c {ctrl1;ctrl2;end'} :: tl->
+      let ctrl1= point_add prev ctrl1
+      and ctrl2= point_add prev ctrl2
+      and end'= point_add prev end' in
+      Ccurve {ctrl1; ctrl2; end'} :: to_outline end' tl
+    | Cmd_S {ctrl2; end'} :: tl->
+      SCcurve {ctrl= ctrl2; end'} :: to_outline end' tl
+    | Cmd_s {ctrl2; end'} :: tl->
+      let ctrl= point_add prev ctrl2
+      and end'= point_add prev end' in
+      SCcurve {ctrl; end'} :: to_outline end' tl
+
+    | Cmd_Q {ctrl; end'} :: tl->
+      Qcurve {ctrl; end'} :: to_outline end' tl
+    | Cmd_q {ctrl; end'} :: tl->
+      let ctrl= point_add prev ctrl
+      and end'= point_add prev end' in
+      Qcurve {ctrl; end'} :: to_outline end' tl
+    | Cmd_T {end'} :: tl-> SQcurve end' :: to_outline end' tl
+    | Cmd_t {end'} :: tl->
+      let end'= (point_add prev end') in
+      SQcurve end' :: to_outline end' tl
+
+    | Cmd_A arc_desc :: tl-> to_outline arc_desc.end' tl
+    | Cmd_a arc_desc :: tl->
+      let end'= point_add prev arc_desc.end' in
+      to_outline end' tl
+  in
+  let start=
+    match sub.start with
+    | Absolute point-> point
+    | Relative point-> point_add prev point
+  in
+  let segments= sub.segments |> to_outline start in
+  Outline.{ start; segments }
+

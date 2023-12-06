@@ -309,4 +309,11 @@ sig
 end
 
 val of_string : string -> t option
+(** Parse the d attribute and return the path *)
+
+val sub_of_outline : Outline.path -> sub
+(** Convert [Outline.path] to [sub] command *)
+
+val sub_to_outline : ?prev:point -> sub -> Outline.path
+(** Convert [sub] command to [Outline.path] *)
 
