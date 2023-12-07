@@ -76,13 +76,8 @@ module Adjust = struct
     { svg with paths }
 end
 
-let xml_member name nodes=
-  try
-    Some (Ezxmlm.member name nodes)
-  with
-    Ezxmlm.Tag_not_found _-> None
-
 let load_file path=
+  let open Utils in
   In_channel.with_open_text path @@ fun chan->
   let _dtd, nodes= Ezxmlm.from_channel chan in
   let get_paths nodes=
@@ -92,7 +87,7 @@ let load_file path=
   match Ezxmlm.get_attr "viewBox" attrs |> ViewBox.of_string with
   | Some viewBox->
     let paths=
-      let container= match xml_member "g" svg with
+      let container= match xml_member_opt "g" svg with
         | Some g-> g
         | None-> svg
       in

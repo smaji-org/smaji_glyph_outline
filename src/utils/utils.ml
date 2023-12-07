@@ -4,8 +4,16 @@ let string_of_float f=
   let str= string_of_float f in
   if str.[String.length str - 1] == '.' then str ^ "0" else str
 
-let xml_get_attr_opt name attrs=
+let xml_attr_opt name attrs=
   try Some (Ezxmlm.get_attr name attrs) with _-> None
+
+let xml_member_opt name nodes=
+  try
+    Some (Ezxmlm.member name nodes)
+  with
+    Ezxmlm.Tag_not_found _-> None
+
+let int_of_hex str= int_of_string ("0x" ^ str)
 
 module MiniParsec = struct
   open Printf

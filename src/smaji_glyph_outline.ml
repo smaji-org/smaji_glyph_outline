@@ -13,4 +13,5 @@ module Svg= Svg
 module Glif= Glif
 module Utils= Utils
 
+(* let svg_to_glif svg= glif *)
 
