@@ -20,4 +20,9 @@ module Glif = Glif
 module Utils = Utils
 (** Internal utils *)
 
+val glif_of_svg : Svg.t -> Glif.t
+(** Convert from svg to glif *)
+
+val svg_of_glif : Glif.t -> Svg.t
+(** Convert from glif to svg *)
 

@@ -314,7 +314,6 @@ module Glif = struct
   open Printf
 
   let%expect_test "load_file"=
-    let open Raw in
     (match load_file "a.xml" with
     | Some glif->
       ListLabels.iter glif.elements ~f:(function
@@ -344,7 +343,6 @@ module Glif = struct
       curve 237.0 88.0"]
 
   let%expect_test "outline_of_points"=
-    let open Raw in
     "a.xml" |> load_file |> Option.iter @@ fun glif->
       glif.elements |> List.iter (function
         | Component _-> ()
@@ -364,7 +362,6 @@ module Glif = struct
       }"]
 
   let%expect_test "outline_of_points"=
-    let open Raw in
     "b.xml" |> load_file |> Option.iter @@ fun glif->
       glif.elements |> List.iter (function
         | Component _-> ()
@@ -399,7 +396,6 @@ module Glif = struct
       }"]
 
   let%expect_test "outline_to_points"=
-    let open Raw in
     "b.xml" |> load_file |> Option.iter @@ fun glif->
       glif.elements |> List.iter (function
         | Component _-> ()
@@ -410,7 +406,7 @@ module Glif = struct
             |> Option.iter @@ fun path->
               path
                 |> Glif.outline_to_points
-                |> List.map Glif.Raw.contour_point_to_string
+                |> List.map Glif.contour_point_to_string
                 |> String.concat "\n"
                 |> print_endline
         );

@@ -33,216 +33,218 @@ type component= {
   identifier: string option;
 }
 
-module Raw = struct
-  type contour_point_type=
-    | Line
-    | Offcurve
-    | Curve
-    | Qcurve
+type contour_point_type=
+  | Line
+  | Offcurve
+  | Curve
+  | Qcurve
 
-  let contour_point_type_of_string= function
-    | "line"     -> Line
-    | "offcurve" -> Offcurve
-    | "curve"    -> Curve
-    | "qcurve"   -> Qcurve
-    | _          -> Offcurve
+let contour_point_type_of_string= function
+  | "line"     -> Line
+  | "offcurve" -> Offcurve
+  | "curve"    -> Curve
+  | "qcurve"   -> Qcurve
+  | _          -> Offcurve
 
-  let contour_point_type_to_string= function
-    | Line     -> "line"
-    | Offcurve -> "offcurve"
-    | Curve    -> "curve"
-    | Qcurve   -> "qcurve"
+let contour_point_type_to_string= function
+  | Line     -> "line"
+  | Offcurve -> "offcurve"
+  | Curve    -> "curve"
+  | Qcurve   -> "qcurve"
 
-  type contour_point= {
-    x: float;
-    y: float;
-    point_type: contour_point_type;
+type contour_point= {
+  x: float;
+  y: float;
+  point_type: contour_point_type;
+}
+
+type contour= {
+  identifier: string option;
+  points: contour_point list;
+}
+
+let contour_point_to_string point=
+  Printf.sprintf "%s (%s,%s)"
+    (contour_point_type_to_string point. point_type)
+    (Utils.string_of_float point.x)
+    (Utils.string_of_float point.y)
+
+let component_default= {
+  base= None;
+  xScale= 1.;
+  xyScale= 0.;
+  yxScale= 0.;
+  yScale= 1.;
+  xOffset= 0.;
+  yOffset= 0.;
+  identifier= None;
+}
+
+let contour_point_default= {
+  x= 0.;
+  y= 0.;
+  point_type= Offcurve;
+}
+
+let contour_default= {
+  identifier= None;
+  points= [];
+}
+
+type outline_elm=
+  | Component of component
+  | Contour of contour
+
+type advance= { width: float; height: float }
+
+type unicodes= int list
+
+type t= {
+  name: string;
+  format: int;
+  formatMinor: int;
+  advance: advance;
+  unicodes: unicodes;
+  elements: outline_elm list;
+}
+
+let get_component attrs=
+  ListLabels.fold_left
+    attrs
+    ~init:component_default
+    ~f:(fun acc attr->
+      let ((_ns, name), value)= attr in
+      match name with
+      | "base"-> { acc with base= Some value }
+      | "xScale"-> { acc with xScale= float_of_string value }
+      | "xyScale"-> { acc with xyScale= float_of_string value }
+      | "yxScale"-> { acc with yxScale= float_of_string value }
+      | "yScale"-> { acc with yScale= float_of_string value }
+      | "xOffset"-> { acc with xOffset= float_of_string value }
+      | "yOffset"-> { acc with yOffset= float_of_string value }
+      | "identifier"-> { acc with identifier= Some value }
+      | _-> acc)
+
+let get_point attrs=
+  ListLabels.fold_left
+    attrs
+    ~init:component_default
+    ~f:(fun acc attr->
+      let ((_ns, name), value)= attr in
+      match name with
+      | "x"-> { acc with base= Some value }
+      | "y"-> { acc with xScale= float_of_string value }
+      | "type"-> { acc with xyScale= float_of_string value }
+      | _-> acc)
+
+let get_outline glyph=
+  let _, outline= Ezxmlm.member_with_attr "outline" glyph in
+  ListLabels.filter_map
+    outline
+    ~f:(fun node->
+      match node with
+      | `El (((_ns,name), attrs), nodes)->
+        (match name with
+        | "component"-> Some (Component (get_component attrs))
+        | "contour"->
+          let identifier= xml_attr_opt "identifier" attrs in
+          let points= ListLabels.filter_map nodes
+            ~f:(fun node->
+              match node with
+              | `El (((_ns, "point"), attrs), _)->
+                let x= attrs
+                  |> xml_attr_opt "x"
+                  |> Option.value ~default:"0.0"
+                  |> float_of_string in
+                let y= attrs
+                  |> xml_attr_opt "y"
+                  |> Option.value ~default:"0.0"
+                  |> float_of_string in
+                let point_type= attrs
+                  |> xml_attr_opt "type"
+                  |> Option.value ~default:""
+                  |> contour_point_type_of_string
+                in
+                Some {
+                  x;
+                  y;
+                  point_type;
+                }
+              | _-> None
+              )
+          in
+          Some (Contour {
+            identifier;
+            points;
+          })
+        | _-> None)
+      | `Data _-> None)
+
+let get_advance glyph=
+  match Ezxmlm.member_with_attr "advance" glyph with
+  | attrs, _->
+    let width= xml_attr_opt "width" attrs
+      |> Fun.flip Option.bind float_of_string_opt
+    and height= xml_attr_opt "width" attrs
+      |> Fun.flip Option.bind float_of_string_opt in
+    (match width, height with
+    | None, None-> { height= 0.; width= 0. }
+    | Some width, None-> { width= 0.; height= width }
+    | None, Some height-> { width= height; height }
+    | Some width, Some height-> { width; height }
+    )
+  | exception Not_found-> { height= 0.; width= 0. }
+
+let get_unicode glyph= glyph
+  |> Ezxmlm.members_with_attr "unicode"
+  |> List.filter_map (fun (attrs,_)->
+    attrs |> xml_attr_opt "hex" |> Option.map int_of_hex)
+
+let _load_file path=
+  In_channel.with_open_text path @@ fun chan->
+  let _dtd, nodes= Ezxmlm.from_channel chan in
+  let attrs, glyph= Ezxmlm.member_with_attr "glyph" nodes in
+  let name= attrs |> Ezxmlm.get_attr "name"
+  and format= attrs
+    |> xml_attr_opt "format"
+    |> Option.map int_of_string
+    |> Option.value ~default:2
+  and formatMinor= attrs
+    |> xml_attr_opt "formatMinor"
+    |> Option.map int_of_string
+    |> Option.value ~default:0
+  and advance= get_advance glyph
+  and unicodes= get_unicode glyph
+  and elements= get_outline glyph in
+  {
+    name;
+    format;
+    formatMinor;
+    advance;
+    unicodes;
+    elements;
   }
 
-  type contour= {
-    identifier: string option;
-    points: contour_point list;
-  }
+let load_file_exn path=
+  try _load_file path with _-> failwith "load_file"
 
-  let contour_point_to_string point=
-    Printf.sprintf "%s (%s,%s)"
-      (contour_point_type_to_string point. point_type)
-      (Utils.string_of_float point.x)
-      (Utils.string_of_float point.y)
-
-  let component_default= {
-    base= None;
-    xScale= 1.;
-    xyScale= 0.;
-    yxScale= 0.;
-    yScale= 1.;
-    xOffset= 0.;
-    yOffset= 0.;
-    identifier= None;
-  }
-
-  let contour_point_default= {
-    x= 0.;
-    y= 0.;
-    point_type= Offcurve;
-  }
-
-  let contour_default= {
-    identifier= None;
-    points= [];
-  }
-
-  type outline_elm=
-    | Component of component
-    | Contour of contour
-
-  type advance= { width: float; height: float }
-
-  type unicodes= int list
-
-  type glif= {
-    name: string;
-    format: string;
-    formatMinor: string;
-    advance: advance;
-    unicodes: unicodes;
-    elements: outline_elm list;
-  }
-
-  let get_component attrs=
-    ListLabels.fold_left
-      attrs
-      ~init:component_default
-      ~f:(fun acc attr->
-        let ((_ns, name), value)= attr in
-        match name with
-        | "base"-> { acc with base= Some value }
-        | "xScale"-> { acc with xScale= float_of_string value }
-        | "xyScale"-> { acc with xyScale= float_of_string value }
-        | "yxScale"-> { acc with yxScale= float_of_string value }
-        | "yScale"-> { acc with yScale= float_of_string value }
-        | "xOffset"-> { acc with xOffset= float_of_string value }
-        | "yOffset"-> { acc with yOffset= float_of_string value }
-        | "identifier"-> { acc with identifier= Some value }
-        | _-> acc)
-
-  let get_point attrs=
-    ListLabels.fold_left
-      attrs
-      ~init:component_default
-      ~f:(fun acc attr->
-        let ((_ns, name), value)= attr in
-        match name with
-        | "x"-> { acc with base= Some value }
-        | "y"-> { acc with xScale= float_of_string value }
-        | "type"-> { acc with xyScale= float_of_string value }
-        | _-> acc)
-
-  let get_outline glyph=
-    let _, outline= Ezxmlm.member_with_attr "outline" glyph in
-    ListLabels.filter_map
-      outline
-      ~f:(fun node->
-        match node with
-        | `El (((_ns,name), attrs), nodes)->
-          (match name with
-          | "component"-> Some (Component (get_component attrs))
-          | "contour"->
-            let identifier= xml_attr_opt "identifier" attrs in
-            let points= ListLabels.filter_map nodes
-              ~f:(fun node->
-                match node with
-                | `El (((_ns, "point"), attrs), _)->
-                  let x= attrs
-                    |> xml_attr_opt "x"
-                    |> Option.value ~default:"0.0"
-                    |> float_of_string in
-                  let y= attrs
-                    |> xml_attr_opt "y"
-                    |> Option.value ~default:"0.0"
-                    |> float_of_string in
-                  let point_type= attrs
-                    |> xml_attr_opt "type"
-                    |> Option.value ~default:""
-                    |> contour_point_type_of_string
-                  in
-                  Some {
-                    x;
-                    y;
-                    point_type;
-                  }
-                | _-> None
-                )
-            in
-            Some (Contour {
-              identifier;
-              points;
-            })
-          | _-> None)
-        | `Data _-> None)
-
-  let get_advance glyph=
-    match Ezxmlm.member_with_attr "advance" glyph with
-    | attrs, _->
-      let width= xml_attr_opt "width" attrs
-        |> Fun.flip Option.bind float_of_string_opt
-      and height= xml_attr_opt "width" attrs
-        |> Fun.flip Option.bind float_of_string_opt in
-      (match width, height with
-      | None, None-> { height= 0.; width= 0. }
-      | Some width, None-> { width= 0.; height= width }
-      | None, Some height-> { width= height; height }
-      | Some width, Some height-> { width; height }
-      )
-    | exception Not_found-> { height= 0.; width= 0. }
-
-  let get_unicode glyph= glyph
-    |> Ezxmlm.members_with_attr "unicode"
-    |> List.filter_map (fun (attrs,_)->
-      attrs |> xml_attr_opt "hex" |> Option.map int_of_hex)
-
-  let _load_file path=
-    In_channel.with_open_text path @@ fun chan->
-    let _dtd, nodes= Ezxmlm.from_channel chan in
-    let attrs, glyph= Ezxmlm.member_with_attr "glyph" nodes in
-    let name= attrs |> Ezxmlm.get_attr "name"
-    and format= attrs |> Ezxmlm.get_attr "format"
-    and formatMinor= attrs
-      |> xml_attr_opt "formatMinor"
-      |> Option.value ~default:"0"
-    and advance= get_advance glyph
-    and unicodes= get_unicode glyph
-    and elements= get_outline glyph in
-    {
-      name;
-      format;
-      formatMinor;
-      advance;
-      unicodes;
-      elements;
-    }
-
-  let load_file_exn path=
-    try _load_file path with _-> failwith "load_file"
-
-  let load_file path=
-    try Some (_load_file path) with _-> None
-end
+let load_file path=
+  try Some (_load_file path) with _-> None
 
 type ('a, 'b) either=
   | Left of 'a
   | Right of 'b
 
-let outline_of_points (points:Raw.contour_point list)=
+let outline_of_points (points:contour_point list)=
   let rec find_start elt=
-    match elt.Circle.value.Raw.point_type with
+    match elt.Circle.value.point_type with
     | Line-> elt
     | Offcurve-> find_start elt.right
     | Curve-> elt
     | Qcurve-> elt
   in
   let circle= Circle.of_list points in
-  let build_next building (elt:Raw.contour_point Circle.elt)=
+  let build_next building (elt:contour_point Circle.elt)=
     let value= elt.value in
     match value.point_type with
     | Line-> Right (Outline.Line (value.x, value.y))
@@ -301,25 +303,25 @@ let outline_to_points (path:Outline.path)=
     | []-> []
     | segment::tl->
       match segment with
-      | Line (x, y)-> Raw.{ x; y; point_type= Line } :: to_points dummy tl
+      | Line (x, y)-> { x; y; point_type= Line } :: to_points dummy tl
       | Qcurve { ctrl; end'; }->
         let p1=
           let (x,y)= ctrl in
-          Raw.{ x; y; point_type= Offcurve }
+          { x; y; point_type= Offcurve }
         and p2=
           let (x,y)= end' in
-          Raw.{ x; y; point_type= Qcurve } in
+          { x; y; point_type= Qcurve } in
         p1::p2 :: to_points (ctrl, end') tl
       | Ccurve { ctrl1; ctrl2; end'; }->
         let p1=
           let (x,y)= ctrl1 in
-          Raw.{ x; y; point_type= Offcurve }
+          { x; y; point_type= Offcurve }
         and p2=
           let (x,y)= ctrl2 in
-          Raw.{ x; y; point_type= Offcurve }
+          { x; y; point_type= Offcurve }
         and p3=
           let (x,y)= end' in
-          Raw.{ x; y; point_type= Curve } in
+          { x; y; point_type= Curve } in
         p1::p2::p3 :: to_points (ctrl2, end') tl
       | SQcurve end'->
         let ctrl=
@@ -328,10 +330,10 @@ let outline_to_points (path:Outline.path)=
         in
         let p1=
           let (x,y)= ctrl in
-          Raw.{ x; y; point_type= Offcurve }
+          { x; y; point_type= Offcurve }
         and p2=
           let (x,y)= end' in
-          Raw.{ x; y; point_type= Qcurve } in
+          { x; y; point_type= Qcurve } in
         p1::p2 :: to_points (ctrl, end') tl
       | SCcurve { ctrl; end'; } ->
         let ctrl1=
@@ -340,13 +342,13 @@ let outline_to_points (path:Outline.path)=
         in
         let p1=
           let (x,y)= ctrl1 in
-          Raw.{ x; y; point_type= Offcurve }
+          { x; y; point_type= Offcurve }
         and p2=
           let (x,y)= ctrl in
-          Raw.{ x; y; point_type= Offcurve }
+          { x; y; point_type= Offcurve }
         and p3=
           let (x,y)= end' in
-          Raw.{ x; y; point_type= Curve } in
+          { x; y; point_type= Curve } in
         p1::p2::p3 :: to_points (ctrl, end') tl
   in
   to_points dummy path.segments
