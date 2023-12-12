@@ -16,7 +16,7 @@ type t= {
   paths: Path.t list;
 }
 
-let to_string_svg ?(indent=0) t=
+let svg_string_of_t ?(indent=0) t=
   let step= 2 in
   let open Printf in
   let viewBox= ViewBox.to_string_svg t.viewBox in

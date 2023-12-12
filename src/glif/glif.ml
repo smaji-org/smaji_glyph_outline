@@ -9,6 +9,7 @@
  *)
 
 open Utils
+open Printf
 
 type point = float * float
 
@@ -46,7 +47,7 @@ let contour_point_type_of_string= function
   | "qcurve"   -> Qcurve
   | _          -> Offcurve
 
-let contour_point_type_to_string= function
+let string_of_contour_point_type= function
   | Line     -> "line"
   | Offcurve -> "offcurve"
   | Curve    -> "curve"
@@ -63,11 +64,19 @@ type contour= {
   points: contour_point list;
 }
 
-let contour_point_to_string point=
-  Printf.sprintf "%s (%s,%s)"
-    (contour_point_type_to_string point. point_type)
+let string_of_contour_point point=
+  sprintf "%s (%s,%s)"
+    (string_of_contour_point_type point. point_type)
     (Utils.string_of_float point.x)
     (Utils.string_of_float point.y)
+
+let glif_string_of_contour_point ?(indent=0) point=
+  let indent_str= String.make indent ' ' in
+  sprintf "%s<point x=\"%s\" y=\"%s\" type=\"%s\" />"
+    indent_str
+    (string_of_float point.x)
+    (string_of_float point.y)
+    (string_of_contour_point_type point. point_type)
 
 let component_default= {
   base= None;
@@ -296,7 +305,7 @@ let outline_of_points (points:contour_point list)=
     let start= (start.value.x, start.value.y) in
     Some Outline.{ start; segments }
 
-let outline_to_points (path:Outline.path)=
+let points_of_outline(path:Outline.path)=
   let dummy= ((0.,0.),(0.,0.)) in
   let rec to_points prev(*used to calc the reflection of the control point*) (segments:Outline.segment list)=
     match segments with
@@ -353,3 +362,72 @@ let outline_to_points (path:Outline.path)=
   in
   to_points dummy path.segments
 
+let glif_string_of_unicodes ?(indent=0) unicodes=
+  let indent_str= String.make indent ' ' in
+  unicodes
+    |> List.map @@ sprintf "%s<unicode hex=\"%x\" />" indent_str
+    |> String.concat "\n"
+
+let glif_string_of_outline_elm ?(indent=0) elm=
+  let indent_str= String.make indent ' ' in
+  match elm with
+  | Component c->
+    let attrs=
+      c.identifier
+        |> Option.map (fun i-> [sprintf "base=\"%s\"" i])
+        |> Option.value ~default:[]
+      |> List.cons @@ sprintf "yOffset=\"%s\"" (string_of_float c.yOffset)
+      |> List.cons @@ sprintf "xOffset=\"%s\"" (string_of_float c.xOffset)
+      |> List.cons @@ sprintf "yScale=\"%s\"" (string_of_float c.yScale)
+      |> List.cons @@ sprintf "yxScale=\"%s\"" (string_of_float c.yxScale)
+      |> List.cons @@ sprintf "xyScale=\"%s\"" (string_of_float c.xyScale)
+      |> List.cons @@ sprintf "xScale=\"%s\"" (string_of_float c.xScale)
+      |> List.cons @@ sprintf "xScale=\"%s\"" (string_of_float c.xScale)
+      |> (fun attrs->
+        match c.base with
+        | None-> attrs
+        | Some base-> attrs |> List.cons @@
+          sprintf "base=\"%s\"" base)
+      |> String.concat " "
+    in
+    sprintf "%s<component %s />" indent_str attrs
+  | Contour contour->
+    let attr= contour.identifier
+      |> Option.map (sprintf " identifier=\"%s\" ")
+      |> Option.value ~default:""
+    in
+    let points= contour.points
+      |> List.map (fun point-> sprintf "%s"
+        (glif_string_of_contour_point ~indent:(indent+2) point))
+      |> String.concat "\n"
+    in
+    sprintf "%s<contour%s>\n%s\n%s</contour>"
+      indent_str
+      attr
+      points
+      indent_str
+
+let glif_string_of_t ?(indent=0) glif=
+  let step= 2 in
+  let indent_0= String.make (indent+step*0) ' '
+  and indent_1= String.make (indent+step*1) ' ' in
+  let outline=
+    let elements= glif.elements
+      |> List.map (glif_string_of_outline_elm ~indent:(indent+4))
+      |> String.concat "\n"
+    in
+    sprintf "%s<outline>\n%s\n%s</outline>" indent_1 elements indent_1
+  in
+  sprintf
+"%s<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+%s<glyph name=\"%s\" format=\"%d\" formatMinor=\"%d\">
+%s<advance width=\"%s\" height=\"%s\" />
+%s
+%s
+%s</glyph>"
+    indent_0
+    indent_0 glif.name glif.format glif.formatMinor
+    indent_1 (string_of_float glif.advance.width) (string_of_float glif.advance.height)
+    (glif_string_of_unicodes glif.unicodes)
+    outline
+    indent_0

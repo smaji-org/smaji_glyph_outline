@@ -109,7 +109,7 @@ module Svg = struct
   let svg_continuous= Svg.{ viewBox; paths= paths_continuous }
 
   let%expect_test "svg_to_string_individual"=
-    Svg.to_string_svg svg_individual |> print_endline;
+    Svg.svg_string_of_t svg_individual |> print_endline;
     [%expect "
       <svg viewBox=\"1.0,2.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
@@ -131,7 +131,7 @@ module Svg = struct
       </svg>"]
 
   let%expect_test "svg_to_string_continuous"=
-    Svg.to_string_svg svg_continuous |> print_endline;
+    Svg.svg_string_of_t svg_continuous |> print_endline;
     [%expect "
       <svg viewBox=\"1.0,2.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
@@ -153,7 +153,7 @@ module Svg = struct
 
   let%expect_test "svg_reset_viewBox_1"=
     let svg= svg_individual |> Svg.Adjust.viewBox_reset in
-    Svg.to_string_svg svg |> print_endline;
+    Svg.svg_string_of_t svg |> print_endline;
     [%expect "
       <svg viewBox=\"0.0,0.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
@@ -180,7 +180,7 @@ module Svg = struct
       min_y= -. viewBox.min_y }
     in
     let svg= Svg.{ viewBox; paths= paths_individual } |> Svg.Adjust.viewBox_reset in
-    Svg.to_string_svg svg |> print_endline;
+    Svg.svg_string_of_t svg |> print_endline;
     [%expect "
       <svg viewBox=\"0.0,0.0 4.0,3.0\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
@@ -218,7 +218,7 @@ module Svg = struct
     [%expect "{ px= 27.0; nx= 1.0; py= 30.0; ny= 2.0 }"]
 
   let%expect_test "fit_frame_individual"=
-    Svg.Adjust.viewBox_fitFrame_reset svg_individual |> Svg.to_string_svg |> print_endline;
+    Svg.Adjust.viewBox_fitFrame_reset svg_individual |> Svg.svg_string_of_t |> print_endline;
     [%expect "
       <svg viewBox=\"0.0,0.0 16.0,17.0\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
@@ -240,7 +240,7 @@ module Svg = struct
       </svg>"]
 
   let%expect_test "fit_frame_continuous"=
-    Svg.Adjust.viewBox_fitFrame_reset svg_continuous |> Svg.to_string_svg |> print_endline;
+    Svg.Adjust.viewBox_fitFrame_reset svg_continuous |> Svg.svg_string_of_t |> print_endline;
     [%expect "
       <svg viewBox=\"0.0,0.0 26.0,28.0\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
@@ -262,7 +262,7 @@ module Svg = struct
 
   let%expect_test "load_file"=
     (match Svg.load_file "a.svg" with
-    | Some svg-> svg |> Svg.to_string_svg |> print_endline
+    | Some svg-> svg |> Svg.svg_string_of_t |> print_endline
     | None-> print_endline "");
     [%expect "
       <svg viewBox=\"45.0,-33.8 150.0,150.0\" xmlns=\"http://www.w3.org/2000/svg\">
@@ -286,7 +286,7 @@ module Svg = struct
   let%expect_test "file_fit_frame"=
     (match Svg.load_file "a.svg" with
     | Some svg->
-      svg |> Svg.Adjust.viewBox_fitFrame_reset |> Svg.to_string_svg |> print_endline
+      svg |> Svg.Adjust.viewBox_fitFrame_reset |> Svg.svg_string_of_t |> print_endline
     | None-> print_endline "");
     [%expect {|
       <svg viewBox="0.0,0.0 60.3,120.6" xmlns="http://www.w3.org/2000/svg">
@@ -322,7 +322,7 @@ module Glif = struct
       | Contour contour->
         ListLabels.iter contour.points
           ~f:(fun point-> printf "%s %s %s\n"
-            (contour_point_type_to_string point.point_type)
+            (string_of_contour_point_type point.point_type)
             (Utils.string_of_float point.x)
             (Utils.string_of_float point.y)
             ))
@@ -405,8 +405,8 @@ module Glif = struct
             |> Glif.outline_of_points
             |> Option.iter @@ fun path->
               path
-                |> Glif.outline_to_points
-                |> List.map Glif.contour_point_to_string
+                |> Glif.points_of_outline
+                |> List.map Glif.string_of_contour_point
                 |> String.concat "\n"
                 |> print_endline
         );

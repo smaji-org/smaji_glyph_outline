@@ -17,7 +17,7 @@ module ViewBox = ViewBox
 type t = { viewBox : ViewBox.t; paths : Path.t list; }
 (** The type of svg, consists of viewBox and paths *)
 
-val to_string_svg : ?indent:int -> t -> string
+val svg_string_of_t : ?indent:int -> t -> string
 (** Return the svg-formatted plain text *)
 
 val set_viewBox : ViewBox.t -> t -> t

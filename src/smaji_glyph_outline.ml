@@ -27,7 +27,7 @@ let glif_of_svg (svg:Svg.t)=
       let identifier= None
       and points= sub
         |> Svg.Path.sub_to_outline
-        |> Glif.outline_to_points
+        |> Glif.points_of_outline
       in
       Glif.Contour { identifier; points })
     |> List.concat
