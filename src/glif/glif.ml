@@ -382,7 +382,6 @@ let glif_string_of_outline_elm ?(indent=0) elm=
       |> List.cons @@ sprintf "yxScale=\"%s\"" (string_of_float c.yxScale)
       |> List.cons @@ sprintf "xyScale=\"%s\"" (string_of_float c.xyScale)
       |> List.cons @@ sprintf "xScale=\"%s\"" (string_of_float c.xScale)
-      |> List.cons @@ sprintf "xScale=\"%s\"" (string_of_float c.xScale)
       |> (fun attrs->
         match c.base with
         | None-> attrs
