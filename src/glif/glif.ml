@@ -17,12 +17,6 @@ type cubic_desc = { ctrl1 : point; ctrl2 : point; end' : point; }
 
 type quadratic_desc = { ctrl : point; end' : point; }
 
-let xml_member name nodes=
-  try
-    Some (Ezxmlm.member name nodes)
-  with
-    Ezxmlm.Tag_not_found _-> None
-
 type component= {
   base: string option;
   xScale: float;
@@ -89,6 +83,7 @@ let component_default= {
   identifier= None;
 }
 
+(*
 let contour_point_default= {
   x= 0.;
   y= 0.;
@@ -99,6 +94,7 @@ let contour_default= {
   identifier= None;
   points= [];
 }
+*)
 
 type outline_elm=
   | Component of component
@@ -134,6 +130,7 @@ let get_component attrs=
       | "identifier"-> { acc with identifier= Some value }
       | _-> acc)
 
+(*
 let get_point attrs=
   ListLabels.fold_left
     attrs
@@ -145,6 +142,7 @@ let get_point attrs=
       | "y"-> { acc with xScale= float_of_string value }
       | "type"-> { acc with xyScale= float_of_string value }
       | _-> acc)
+*)
 
 let get_outline glyph=
   let _, outline= Ezxmlm.member_with_attr "outline" glyph in

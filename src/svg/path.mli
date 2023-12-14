@@ -8,7 +8,7 @@
  * This file is a part of Smaji_glyph_outline.
  *)
 
-type point = float * float
+type point = Outline.point
 
 (** {2 Path command descriptions} *)
 
@@ -19,7 +19,7 @@ type s_cubic_desc = { ctrl2 : point; end' : point; }
 (** The type of description of subsequent cubic bézier curve command*)
 
 type quadratic_desc = { ctrl : point; end' : point; }
-(** The type of description of cubic bézier curve command*)
+(** The type of description of quadratic bézier curve command*)
 
 type s_quadratic_desc = { end' : point; }
 (** The type of description of subsequent cubic bézier curve command*)

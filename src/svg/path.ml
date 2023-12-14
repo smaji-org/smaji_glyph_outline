@@ -10,7 +10,7 @@
 
 open Utils
 
-type point= float * float
+type point= Outline.point
 
 type cubic_desc= {
   ctrl1: point;

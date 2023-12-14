@@ -12,10 +12,10 @@ module Outline = Outline
 (** Module used for the basic outline data structure *)
 
 module Svg = Svg
-(** Module used for svg supporting *)
+(** Module used for supporting svg outline *)
 
 module Glif = Glif
-(** Module used for glif supporting *)
+(** Module used for supporting glif outline *)
 
 module Utils = Utils
 (** Internal utils *)
