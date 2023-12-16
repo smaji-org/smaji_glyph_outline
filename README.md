@@ -1,8 +1,8 @@
 # smaji\_glyph\_outline
 
-A library to read, write and transfer glyph outline files.
+A library to read, write and translate glyph outline files.
 
 Supported glyph outline format:
 
 * SVG, Scalable Vector Graphics
-* GLIF, Glyph Interchange Format (in development)
+* GLIF, Glyph Interchange Format

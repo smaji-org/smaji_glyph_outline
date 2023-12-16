@@ -87,6 +87,9 @@ val load_file_exn : string -> t
 (** [load_file path] returns [t] if the file specified by path is read and parsed successfully, otherwise [None] is returned. *)
 val load_file : string -> t option
 
+(** [of_string string] reads and parses the string and return the represented glif. *)
+val of_string : string -> t
+
 (** Convert contour_point list to the general outline path. *)
 val outline_of_points : contour_point list -> Outline.path option
 

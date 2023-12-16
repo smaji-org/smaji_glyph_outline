@@ -207,9 +207,7 @@ let get_unicode glyph= glyph
   |> List.filter_map (fun (attrs,_)->
     attrs |> xml_attr_opt "hex" |> Option.map int_of_hex)
 
-let _load_file path=
-  In_channel.with_open_text path @@ fun chan->
-  let _dtd, nodes= Ezxmlm.from_channel chan in
+let of_xml_nodes nodes=
   let attrs, glyph= Ezxmlm.member_with_attr "glyph" nodes in
   let name= attrs |> Ezxmlm.get_attr "name"
   and format= attrs
@@ -231,6 +229,16 @@ let _load_file path=
     unicodes;
     elements;
   }
+
+
+let of_string string=
+  let _dtd, nodes= Ezxmlm.from_string string in
+  of_xml_nodes nodes
+
+let _load_file path=
+  In_channel.with_open_text path @@ fun chan->
+  let _dtd, nodes= Ezxmlm.from_channel chan in
+  of_xml_nodes nodes
 
 let load_file_exn path=
   try _load_file path with _-> failwith "load_file"

@@ -40,6 +40,9 @@ module Adjust : sig
   (** Move the content of the graphics by [dx] and [dy], viewBox is not changed *)
 end
 
+val of_string : string -> t option
+(** [of_string string] returns [Some t] if the string represents a legal svg glyph outline file, otherwise, [None] is returned *)
+
 val load_file : string -> t option
 (** [load_file path] returns [Some t] if the path point a legal svg glyph outline file, otherwise, [None] is returned *)
 

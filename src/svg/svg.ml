@@ -76,10 +76,8 @@ module Adjust = struct
     { svg with paths }
 end
 
-let load_file path=
+let of_xml_nodes nodes=
   let open Utils in
-  In_channel.with_open_text path @@ fun chan->
-  let _dtd, nodes= Ezxmlm.from_channel chan in
   let get_paths nodes=
     Ezxmlm.members_with_attr "path" nodes
   in
@@ -99,6 +97,15 @@ let load_file path=
     in
     Some {viewBox; paths}
   | None-> None
+
+let of_string str=
+  let _dtd, nodes= Ezxmlm.from_string str in
+  of_xml_nodes nodes
+
+let load_file path=
+  In_channel.with_open_text path @@ fun chan->
+  let _dtd, nodes= Ezxmlm.from_channel chan in
+  of_xml_nodes nodes
 
 let load_file_exn path=
   match load_file path with
