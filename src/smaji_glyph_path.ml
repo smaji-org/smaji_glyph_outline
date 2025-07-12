@@ -1,19 +1,19 @@
 (*
- * smaji_glyph_outline.ml
+ * smaji_glyph_path.ml
  * -----------
- * Copyright : (c) 2023 - 2023, smaji.org
- * Copyright : (c) 2023 - 2023, ZAN DoYe <zandoye@gmail.com>
+ * Copyright : (c) 2023 - 2025, smaji.org
+ * Copyright : (c) 2023 - 2025, ZAN DoYe <zandoye@gmail.com>
  * Licence   : GPL2
  *
- * This file is a part of Smaji_glyph_outline.
+ * This file is a part of Smaji_glyph_path.
  *)
 
-module Outline= Outline
+module Path= Path
 module Svg= Svg
 module Glif= Glif
 module Utils= Utils
 
-let glif_of_svg (svg:Svg.t)=
+let glif_of_svg_exn (svg:Svg.t)=
   let name= ""
   and format= 2
   and formatMinor= 0
@@ -22,15 +22,19 @@ let glif_of_svg (svg:Svg.t)=
     and height= svg.viewBox.height in
     Glif.{ width; height }
   and unicodes= []
-  and elements= svg.paths
-    |> List.map @@ List.map (fun sub->
-      let identifier= None
-      and points= sub
-        |> Svg.Path.sub_to_outline
-        |> Glif.points_of_outline
-      in
-      Glif.Contour { identifier; points })
-    |> List.concat
+  and elements=
+    svg.paths
+      |> List.map @@ List.map (fun sub->
+        let identifier= None
+        and points= sub
+          |> Svg.Path.sub_to_path
+          |> (fun path->
+            if Path.is_closed path then path
+            else invalid_arg "path is not closed")
+          |> Glif.points_of_outline
+        in
+        Glif.Contour { identifier; points })
+      |> List.concat
   in
   Glif.{
     name;
@@ -40,6 +44,11 @@ let glif_of_svg (svg:Svg.t)=
     unicodes;
     elements
   }
+
+let glif_of_svg (svg:Svg.t)=
+  try Some (glif_of_svg_exn svg) with
+  | Invalid_argument _-> None
+
 
 let svg_of_glif (glif:Glif.t)=
   let viewBox= Svg.ViewBox.{
@@ -56,7 +65,7 @@ let svg_of_glif (glif:Glif.t)=
          please visit project smaji_god for more information. *)
       | Glif.Contour contour-> contour.points
         |> Glif.outline_of_points
-        |> Option.map @@ fun outline-> [Svg.Path.sub_of_outline outline]
+        |> Option.map @@ fun outline-> [Svg.Path.sub_of_path outline]
   in
   Svg.{ viewBox; paths }
 

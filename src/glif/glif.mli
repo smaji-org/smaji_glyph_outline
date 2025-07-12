@@ -1,14 +1,14 @@
 (*
  * glif.mli
  * -----------
- * Copyright : (c) 2023 - 2023, smaji.org
- * Copyright : (c) 2023 - 2023, ZAN DoYe <zandoye@gmail.com>
+ * Copyright : (c) 2023 - 2025, smaji.org
+ * Copyright : (c) 2023 - 2025, ZAN DoYe <zandoye@gmail.com>
  * Licence   : GPL2
  *
  * This file is a part of Smaji_glyph_outline.
  *)
 
-type point = Outline.point
+type point = Path.point
 
 (** The type of description of cubic bézier curve command*)
 type cubic_desc = { ctrl1 : point; ctrl2 : point; end' : point; }
@@ -91,10 +91,10 @@ val load_file : string -> t option
 val of_string : string -> t
 
 (** Convert contour_point list to the general outline path. *)
-val outline_of_points : contour_point list -> Outline.path option
+val outline_of_points : contour_point list -> Path.t option
 
-(** Convert [Outline.path] to a list of contour_point. *)
-val points_of_outline : Outline.path -> contour_point list
+(** Convert [Path.t] to a list of contour_point. *)
+val points_of_outline : Path.t -> contour_point list
 
 (** Returns the glif xml formatted string of the given unicode list. *)
 val glif_string_of_unicodes : ?indent:int -> int list -> string

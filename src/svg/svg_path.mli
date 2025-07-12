@@ -1,14 +1,14 @@
 (*
  * path.mli
  * -----------
- * Copyright : (c) 2023 - 2023, smaji.org
- * Copyright : (c) 2023 - 2023, ZAN DoYe <zandoye@gmail.com>
+ * Copyright : (c) 2023 - 2025, smaji.org
+ * Copyright : (c) 2023 - 2025, ZAN DoYe <zandoye@gmail.com>
  * Licence   : GPL2
  *
- * This file is a part of Smaji_glyph_outline.
+ * This file is a part of Smaji_glyph_path.
  *)
 
-type point = Outline.point
+type point = Path.point
 
 (** {2 Path command descriptions} *)
 
@@ -311,9 +311,9 @@ end
 val of_string : string -> t option
 (** Parse the d attribute and return the path *)
 
-val sub_of_outline : Outline.path -> sub
-(** Convert [Outline.path] to [sub] command *)
+val sub_of_path : Path.t -> sub
+(** Convert [Path.t] to [sub] command *)
 
-val sub_to_outline : ?prev:point -> sub -> Outline.path
-(** Convert [sub] command to [Outline.path] *)
+val sub_to_path : ?prev:point -> sub -> Path.t
+(** Convert [sub] command to [Path.t] *)
 

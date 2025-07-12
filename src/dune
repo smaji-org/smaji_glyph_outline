@@ -1,8 +1,8 @@
 (include_subdirs unqualified)
 
 (library
-  (name smaji_glyph_outline)
-  (public_name smaji_glyph_outline)
+  (name smaji_glyph_path)
+  (public_name smaji_glyph_path)
   (libraries ezxmlm)
   (flags (:standard -safe-string)))
 

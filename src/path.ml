@@ -1,8 +1,8 @@
 (*
  * outline.ml
  * -----------
- * Copyright : (c) 2023 - 2023, smaji.org
- * Copyright : (c) 2023 - 2023, ZAN DoYe <zandoye@gmail.com>
+ * Copyright : (c) 2023 - 2025, smaji.org
+ * Copyright : (c) 2023 - 2025, ZAN DoYe <zandoye@gmail.com>
  * Licence   : GPL2
  *
  * This file is a part of Smaji_glyph_outline.
@@ -17,7 +17,7 @@ type segment=
   | SQcurve of point
   | SCcurve of { ctrl: point; end': point }
 
-type path= {
+type t= {
   start: point;
   segments: segment list;
 }
@@ -46,4 +46,20 @@ let path_to_string ?(indent=0) path=
     |> String.concat "\n"
   in
   Printf.sprintf "%s{\n%s%s\n%s\n%s}" indent_str indent_str1 start segements indent_str
+
+let end_of_path path=
+  match path.segments with
+  | []-> None
+  | _->
+    Option.some @@ match path.segments |> List.rev |> List.hd with
+    | Line point-> point
+    | Qcurve { ctrl=_; end' }-> end'
+    | Ccurve { ctrl1=_; ctrl2=_; end' }-> end'
+    | SQcurve point-> point
+    | SCcurve { ctrl=_; end' }-> end'
+
+let is_closed path=
+  match end_of_path path with
+  | Some end'-> path.start = end'
+  | None-> false
 

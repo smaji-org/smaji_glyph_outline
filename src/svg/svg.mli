@@ -1,14 +1,14 @@
 (*
  * svg.mli
  * -----------
- * Copyright : (c) 2023 - 2023, smaji.org
- * Copyright : (c) 2023 - 2023, ZAN DoYe <zandoye@gmail.com>
+ * Copyright : (c) 2023 - 2025, smaji.org
+ * Copyright : (c) 2023 - 2025, ZAN DoYe <zandoye@gmail.com>
  * Licence   : GPL2
  *
- * This file is a part of Smaji_glyph_outline.
+ * This file is a part of Smaji_glyph_path.
  *)
 
-module Path = Path
+module Path = Svg_path
 (** Module Path *)
 
 module ViewBox = ViewBox
@@ -41,11 +41,11 @@ module Adjust : sig
 end
 
 val of_string : string -> t option
-(** [of_string string] returns [Some t] if the string represents a legal svg glyph outline file, otherwise, [None] is returned *)
+(** [of_string string] returns [Some t] if the string represents a legal svg glyph path file, otherwise, [None] is returned *)
 
 val load_file : string -> t option
-(** [load_file path] returns [Some t] if the path point a legal svg glyph outline file, otherwise, [None] is returned *)
+(** [load_file path] returns [Some t] if the path point a legal svg glyph path file, otherwise, [None] is returned *)
 
 val load_file_exn : string -> t
-(** [load_file_exn path] returns [t] if the path point a legal svg glyph outline file, otherwise error [Failure "load_file_exn"] is raised *)
+(** [load_file_exn path] returns [t] if the path point a legal svg glyph path file, otherwise error [Failure "load_file_exn"] is raised *)
 

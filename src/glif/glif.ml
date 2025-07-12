@@ -1,8 +1,8 @@
 (*
  * glif.ml
  * -----------
- * Copyright : (c) 2023 - 2023, smaji.org
- * Copyright : (c) 2023 - 2023, ZAN DoYe <zandoye@gmail.com>
+ * Copyright : (c) 2023 - 2025, smaji.org
+ * Copyright : (c) 2023 - 2025, ZAN DoYe <zandoye@gmail.com>
  * Licence   : GPL2
  *
  * This file is a part of Smaji_glyph_outline.
@@ -262,33 +262,33 @@ let outline_of_points (points:contour_point list)=
   let build_next building (elt:contour_point Circle.elt)=
     let value= elt.value in
     match value.point_type with
-    | Line-> Right (Outline.Line (value.x, value.y))
+    | Line-> Right (Path.Line (value.x, value.y))
     | Offcurve-> Left (Dlist.insert_last building value)
     | Curve->
       (match Dlist.length building with
-      | 0-> Right (Outline.Line (value.x, value.y))
+      | 0-> Right (Path.Line (value.x, value.y))
       | 1->
         let elt_ctrl= Dlist.head building |> Option.get in
         let ctrl= (elt_ctrl.value.x, elt_ctrl.value.y) in
         let end'= (elt.value.x, elt.value.y) in
-        Right (Outline.Qcurve { ctrl ; end' })
+        Right (Path.Qcurve { ctrl ; end' })
       | 2->
         let elt_ctrl1= Dlist.head building |> Option.get in
         let elt_ctrl2= elt_ctrl1.right |> Option.get in
         let ctrl1= (elt_ctrl1.value.x, elt_ctrl1.value.y) in
         let ctrl2= (elt_ctrl2.value.x, elt_ctrl2.value.y) in
         let end'= (elt.value.x, elt.value.y) in
-        Right (Outline.Ccurve { ctrl1; ctrl2; end' })
+        Right (Path.Ccurve { ctrl1; ctrl2; end' })
       | _-> assert false;
       )
     | Qcurve->
       (match Dlist.length building with
-      | 0-> Right (Outline.Line (value.x, value.y))
+      | 0-> Right (Path.Line (value.x, value.y))
       | 1->
         let elt_ctrl= Dlist.head building |> Option.get in
         let ctrl= (elt_ctrl.value.x, elt_ctrl.value.y) in
         let end'= (elt.value.x, elt.value.y) in
-        Right (Outline.Qcurve { ctrl ; end' })
+        Right (Path.Qcurve { ctrl ; end' })
       | _-> assert false;
       )
   in
@@ -309,11 +309,11 @@ let outline_of_points (points:contour_point list)=
     let building= Dlist.of_list [] in
     let segments= build building start.right in
     let start= (start.value.x, start.value.y) in
-    Some Outline.{ start; segments }
+    Some Path.{ start; segments }
 
-let points_of_outline(path:Outline.path)=
+let points_of_outline(path:Path.t)=
   let dummy= ((0.,0.),(0.,0.)) in
-  let rec to_points prev(*used to calc the reflection of the control point*) (segments:Outline.segment list)=
+  let rec to_points prev(*used to calc the reflection of the control point*) (segments:Path.segment list)=
     match segments with
     | []-> []
     | segment::tl->
