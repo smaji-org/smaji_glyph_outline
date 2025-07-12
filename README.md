@@ -1,6 +1,6 @@
-# smaji\_glyph\_outline
+# smaji\_glyph\_path
 
-A library to read, write and translate glyph outline files.
+A library to read, write and translate glyph stroke or outline files.
 
 Supported glyph outline format:
 
