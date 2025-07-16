@@ -1,7 +1,7 @@
 (library
   (name test)
   (flags (:standard -safe-string))
-  (libraries smaji_glyph_outline)
+  (libraries smaji_glyph_path)
   (inline_tests (deps a.svg a.xml b.xml))
   (preprocess (pps ppx_expect)))
 

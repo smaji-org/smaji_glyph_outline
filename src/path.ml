@@ -8,39 +8,40 @@
  * This file is a part of Smaji_glyph_outline.
  *)
 
-type point= float * float
+open Point
 
 type segment=
-  | Line of point
-  | Qcurve of { ctrl: point; end': point }
-  | Ccurve of { ctrl1: point; ctrl2:point; end': point }
-  | SQcurve of point
-  | SCcurve of { ctrl: point; end': point }
+  | Line of PointF.t
+  | Qcurve of { ctrl: PointF.t; end': PointF.t }
+  | Ccurve of { ctrl1: PointF.t; ctrl2:PointF.t; end': PointF.t }
+  | SQcurve of PointF.t
+  | SCcurve of { ctrl: PointF.t; end': PointF.t }
 
 type t= {
-  start: point;
+  start: PointF.t;
   segments: segment list;
 }
 
-let point_to_string (p1,p2)= Printf.sprintf "(%s,%s)"
-  (Utils.string_of_float p1)
-  (Utils.string_of_float p2)
+type frame = {
+  min_x: PointF.cell; min_y: PointF.cell;
+  max_x: PointF.cell; max_y: PointF.cell;
+}
 
 let segment_to_string  ?(indent=0) segment=
   let open Printf in
   let indent= String.make indent ' ' in
   match segment with
-  | Line point-> sprintf "%sLine %s" indent (point_to_string point)
-  | Qcurve { ctrl; end' }-> sprintf "%sQcurve { ctrl: %s; end: %s; }" indent (point_to_string ctrl) (point_to_string end')
-  | Ccurve { ctrl1; ctrl2; end' }-> sprintf "%sCcurve { ctrl1: %s; ctrl2: %s; end: %s }" indent (point_to_string ctrl1) (point_to_string ctrl2)(point_to_string end')
-  | SQcurve point-> sprintf "%sSQcurve %s" indent (point_to_string point)
-  | SCcurve { ctrl; end' }-> sprintf "%sSCcurve { ctrl: %s; end: %s; }" indent (point_to_string ctrl) (point_to_string end')
+  | Line point-> sprintf "%sLine %s" indent (PointF.to_string point)
+  | Qcurve { ctrl; end' }-> sprintf "%sQcurve { ctrl: %s; end: %s; }" indent (PointF.to_string ctrl) (PointF.to_string end')
+  | Ccurve { ctrl1; ctrl2; end' }-> sprintf "%sCcurve { ctrl1: %s; ctrl2: %s; end: %s }" indent (PointF.to_string ctrl1) (PointF.to_string ctrl2)(PointF.to_string end')
+  | SQcurve point-> sprintf "%sSQcurve %s" indent (PointF.to_string point)
+  | SCcurve { ctrl; end' }-> sprintf "%sSCcurve { ctrl: %s; end: %s; }" indent (PointF.to_string ctrl) (PointF.to_string end')
 
 
 let path_to_string ?(indent=0) path=
   let indent_str= String.make indent ' ' in
   let indent_str1= String.make (indent+2) ' ' in
-  let start= Printf.sprintf "start: %s" (point_to_string path.start) in
+  let start= Printf.sprintf "start: %s" (PointF.to_string path.start) in
   let segements= path.segments
     |> List.map (segment_to_string ~indent:(indent+2))
     |> String.concat "\n"
@@ -62,4 +63,6 @@ let is_closed path=
   match end_of_path path with
   | Some end'-> path.start = end'
   | None-> false
+
+let is_open= Fun.negate is_closed
 

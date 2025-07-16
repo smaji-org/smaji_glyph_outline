@@ -8,7 +8,7 @@
  * This file is a part of Smaji_glyph_outline.
  *)
 
-type point = Path.point
+type point = Point.PointF.t
 
 (** The type of description of cubic bézier curve command*)
 type cubic_desc = { ctrl1 : point; ctrl2 : point; end' : point; }
@@ -43,9 +43,8 @@ val string_of_contour_point_type : contour_point_type -> string
 
 (** The type of contour_point *)
 type contour_point = {
-  x : float; (** coordinate x *)
-  y : float; (** coordinate y *)
-  point_type : contour_point_type;
+  p: point; (** coordinate *)
+  typ : contour_point_type;
 }
 
 (** The type of contour element *)
@@ -93,8 +92,14 @@ val of_string : string -> t
 (** Convert contour_point list to the general outline path. *)
 val outline_of_points : contour_point list -> Path.t option
 
+(** Convert [Path.t] to a list of contour_point. The path must be closed, or None is retruned *)
+val points_of_outline : Path.t -> contour_point list option
+
+(** Convert [Path.t] to a list of contour_point. The path must be closed, or Invalid_argument is raised *)
+val points_of_outline_exn : Path.t -> contour_point list
+
 (** Convert [Path.t] to a list of contour_point. *)
-val points_of_outline : Path.t -> contour_point list
+val points_of_path : Path.t -> contour_point list
 
 (** Returns the glif xml formatted string of the given unicode list. *)
 val glif_string_of_unicodes : ?indent:int -> int list -> string

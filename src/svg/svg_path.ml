@@ -10,7 +10,8 @@
 
 open Utils
 
-type point= Path.point
+module Point= Point.PointF
+type point= Point.t
 
 type cubic_desc= {
   ctrl1: point;
@@ -64,13 +65,9 @@ type start_point=
   | Absolute of point
   | Relative of point
 
-let point_add p1 p2=
-  let f1, f2= p1
-  and f3, f4= p2 in
-  f1+.f3, f2+.f4
-
-let point_translate ~dx ~dy (x, y)= (x+.dx, y+.dy)
-let point_scale ~x ~y (px, py)= (x*.px, y*.py)
+let point_translate ?(dx=0.) ?(dy=0.) p=
+  Point.({x=dx;y=dy} + p)
+let point_scale ?(x=1.) ?(y=1.) p= Point.({x;y} * p)
 
 let start_point_adjust_point ~dx ~dy= function
   | Absolute point-> Absolute (point_translate ~dx ~dy point)
@@ -171,18 +168,18 @@ let command_adjust_scale ~x ~y cmd=
 open Printf
 
 let string_of_start_point= function
-  | Absolute (x, y)-> sprintf "Absolute %s,%s" (string_of_float x) (string_of_float y)
-  | Relative (x, y)-> sprintf "Relative %s,%s" (string_of_float x) (string_of_float y)
+  | Absolute p-> sprintf "Absolute %s,%s" (string_of_float p.x) (string_of_float p.y)
+  | Relative p-> sprintf "Relative %s,%s" (string_of_float p.x) (string_of_float p.y)
 
 let string_of_start_point_svg= function
-  | Absolute (x, y)-> sprintf "M %s,%s" (string_of_float x) (string_of_float y)
-  | Relative (x, y)-> sprintf "m %s,%s" (string_of_float x) (string_of_float y)
+  | Absolute p-> sprintf "M %s,%s" (string_of_float p.x) (string_of_float p.y)
+  | Relative p-> sprintf "m %s,%s" (string_of_float p.x) (string_of_float p.y)
 
-let string_of_point= function (x, y)-> sprintf "%s,%s"
-  (string_of_float x)
-  (string_of_float y)
+let string_of_point (p:point)= sprintf "%s,%s"
+  (string_of_float p.x)
+  (string_of_float p.y)
 
-let string_of_point_svg= function (x, y)-> sprintf "%s,%s" x y
+let string_of_point_svg = function (x, y)-> sprintf "%s,%s" x y
 
 let string_of_cubic_desc desc=
   sprintf "{ctrl1: %s; ctrl2: %s; end: %s}"
@@ -191,14 +188,13 @@ let string_of_cubic_desc desc=
     (string_of_point desc.end')
 
 let string_of_cubic_desc_svg desc=
-  let (f1, f2), (f3, f4), (f5, f6)= desc.ctrl1, desc.ctrl2, desc.end' in
   sprintf "%s,%s,%s,%s,%s,%s"
-    (string_of_float f1)
-    (string_of_float f2)
-    (string_of_float f3)
-    (string_of_float f4)
-    (string_of_float f5)
-    (string_of_float f6)
+    (string_of_float desc.ctrl1.x)
+    (string_of_float desc.ctrl1.y)
+    (string_of_float desc.ctrl2.x)
+    (string_of_float desc.ctrl2.y)
+    (string_of_float desc.end'.x)
+    (string_of_float desc.end'.y)
 
 let string_of_s_cubic_desc desc=
   sprintf "{ctrl2: %s; end: %s}"
@@ -206,12 +202,11 @@ let string_of_s_cubic_desc desc=
     (string_of_point desc.end')
 
 let string_of_s_cubic_desc_svg desc=
-  let (f1, f2), (f3, f4)= desc.ctrl2, desc.end' in
   sprintf "%s,%s,%s,%s"
-    (string_of_float f1)
-    (string_of_float f2)
-    (string_of_float f3)
-    (string_of_float f4)
+    (string_of_float desc.ctrl2.x)
+    (string_of_float desc.ctrl2.y)
+    (string_of_float desc.end'.x)
+    (string_of_float desc.end'.y)
 
 let string_of_quadratic_desc desc=
   sprintf "{ctrl: %s; end: %s}"
@@ -219,12 +214,11 @@ let string_of_quadratic_desc desc=
     (string_of_point desc.end')
 
 let string_of_quadratic_desc_svg desc=
-  let (f1, f2), (f3, f4)= desc.ctrl, desc.end' in
   sprintf "%s,%s,%s,%s"
-    (string_of_float f1)
-    (string_of_float f2)
-    (string_of_float f3)
-    (string_of_float f4)
+    (string_of_float desc.ctrl.x)
+    (string_of_float desc.ctrl.y)
+    (string_of_float desc.end'.x)
+    (string_of_float desc.end'.y)
 
 let string_of_arc_desc desc=
   sprintf "{rx: %s; ry: %s; angle: %s; large_arc: %b; sweep: %b; end: %s}"
@@ -237,15 +231,14 @@ let string_of_arc_desc desc=
 
 let string_of_arc_desc_svg desc=
   let boot_to_int= function true-> 1 | false-> 0 in
-  let f1, f2, f3, b1, b2, (f4, f5)= desc.rx, desc.ry, desc.angle, (boot_to_int desc.large_arc), (boot_to_int desc.sweep), desc.end' in
   sprintf "%s,%s,%s,%d,%d,%s,%s"
-    (string_of_float f1)
-    (string_of_float f2)
-    (string_of_float f3)
-    b1
-    b2
-    (string_of_float f4)
-    (string_of_float f5)
+    (string_of_float desc.rx)
+    (string_of_float desc.ry)
+    (string_of_float desc.angle)
+    (boot_to_int desc.large_arc)
+    (boot_to_int desc.sweep)
+    (string_of_float desc.end'.x)
+    (string_of_float desc.end'.y)
 
 let string_of_command= function
   | Cmd_L point-> point |> string_of_point |> sprintf "L %s"
@@ -299,10 +292,10 @@ type sub= {
 type t= sub list
 
 type frame= {
-  px: float;
   nx: float;
-  py: float;
   ny: float;
+  px: float;
+  py: float;
 }
 
 let frame_merge f1 f2=
@@ -319,123 +312,130 @@ let string_of_frame frame=
     (string_of_float frame.py)
     (string_of_float frame.ny)
 
-let frame_update (x, y) frame=
-  let px= max x frame.px
-  and nx= min x frame.nx
-  and py= max y frame.py
-  and ny= min y frame.ny in
-  { px; nx; py; ny }
+let frame_update Point.{x; y} frame=
+  let nx= min x frame.nx
+  and ny= min y frame.ny
+  and px= max x frame.px
+  and py= max y frame.py in
+  { nx; ny; px; py }
 
-let get_frame_sub ?(previous=(0.,0.)) sub=
+let get_frame_sub ?(prev=Point.{x=0.;y=0.}) sub=
   let frame=
     match sub.start with
-    | Absolute (x, y)->
-      let px= x
-      and nx= x
-      and py= y
-      and ny= y in
+    | Absolute p->
+      let px= p.x
+      and nx= p.x
+      and py= p.y
+      and ny= p.y in
       { px; nx; py; ny }
-    | Relative (dx, dy)->
-      let (x, y)= previous in
-      let px= x +. dx
-      and nx= x +. dx
-      and py= y +. dy
-      and ny= y +. dy in
+    | Relative p->
+      let x= prev.x
+      and y= prev.y in
+      let px= x +. p.x
+      and nx= x +. p.x
+      and py= y +. p.y
+      and ny= y +. p.y in
       { px; nx; py; ny }
   in
-  ListLabels.fold_left
+  let frame, _prev, prev_end=ListLabels.fold_left
     sub.segments
-    ~init:(frame, (frame.px, frame.py))
-    ~f:(fun acc path->
-      let (frame, prev)= acc in
-      match path with
+    ~init:(
+      let spaceholder= Cmd_l {x=0.;y=0.} in
+      frame, spaceholder, {x= frame.nx; y= frame.ny})
+    ~f:(fun acc command->
+      let (frame, _prev, prev_end)= acc in
+      match command with
       | Cmd_L point->
         let frame= frame_update point frame in
-        (frame, point)
+        (frame, command, point)
       | Cmd_l point->
-        let point= point_add prev point in
+        let point= Point.(prev_end + point) in
         let frame= frame_update point frame in
-        (frame, point)
-      | Cmd_H float->
-        let _, prev_y= prev in
-        let point= (float, prev_y) in
+        (frame, command, point)
+      | Cmd_H x->
+        let point= {prev_end with x} in
         let frame= frame_update point frame in
-        (frame, point)
-      | Cmd_h float->
-        let point= point_add prev (float, 0.) in
+        (frame, command, point)
+      | Cmd_h dx->
+        let point= point_translate ~dx prev_end in
         let frame= frame_update point frame in
-        (frame, point)
-      | Cmd_V float->
-        let prev_x, _= prev in
-        let point= prev_x, float in
+        (frame, command, point)
+      | Cmd_V y->
+        let point= {prev_end with y} in
         let frame= frame_update point frame in
-        (frame, point)
-      | Cmd_v float->
-        let point= point_add prev (0., float) in
+        (frame, command, point)
+      | Cmd_v dy->
+        let point= point_translate ~dy prev_end in
         let frame= frame_update point frame in
-        (frame, point)
+        (frame, command, point)
 
       | Cmd_C desc->
         let frame= frame
           |> frame_update desc.ctrl1
           |> frame_update desc.ctrl2
           |> frame_update desc.end' in
-        (frame, desc.end')
+        (frame, command, desc.end')
       | Cmd_c desc->
-        let ctrl1= point_add desc.ctrl1 prev
-        and ctrl2= point_add desc.ctrl2 prev
-        and end'= point_add desc.end' prev in
+        let open Point in
+        let ctrl1= desc.ctrl1 + prev_end
+        and ctrl2= desc.ctrl2 + prev_end
+        and end'= desc.end' + prev_end in
         let frame= frame
           |> frame_update ctrl1
           |> frame_update ctrl2
           |> frame_update end' in
-        (frame, end')
+        (frame, command, end')
       | Cmd_S desc->
         let frame= frame
           |> frame_update desc.ctrl2
           |> frame_update desc.end' in
-        (frame, desc.end')
+        (frame, command, desc.end')
       | Cmd_s desc->
-        let ctrl2= point_add desc.ctrl2 prev
-        and end'= point_add desc.end' prev in
+        let open Point in
+        let ctrl2= desc.ctrl2 + prev_end
+        and end'= desc.end' + prev_end in
         let frame= frame
           |> frame_update ctrl2
           |> frame_update end' in
-        (frame, end')
+        (frame, command, end')
 
       | Cmd_Q desc->
         let frame= frame |> frame_update desc.ctrl |> frame_update desc.end' in
-        (frame, desc.end')
+        (frame, command, desc.end')
       | Cmd_q desc->
-        let ctrl= point_add desc.ctrl prev
-        and end'= point_add desc.end' prev in
+        let open Point in
+        let ctrl= desc.ctrl + prev_end
+        and end'= desc.end' + prev_end in
         let frame= frame |> frame_update ctrl |> frame_update end' in
-        (frame, end')
+        (frame, command, end')
       | Cmd_T desc->
         let frame= frame_update desc.end' frame in
-        (frame, desc.end')
+        (frame, command, desc.end')
       | Cmd_t desc->
-        let point= point_add prev desc.end' in
+        let open Point in
+        let point= prev_end + desc.end' in
         let frame= frame_update point frame in
-        (frame, point)
+        (frame, command, point)
 
-      | Cmd_A arc_desc-> (frame, arc_desc.end')
+      | Cmd_A arc_desc-> (frame, command, arc_desc.end')
       | Cmd_a arc_desc->
-        let point= point_add prev arc_desc.end' in
-        (frame, point)
+        let point= Point.(prev_end + arc_desc.end') in
+        (frame, command, point)
       )
+  in
+  (frame, prev_end)
 
 let get_frame t=
   match t with
   | []-> None
   | hd::tl->
-    let frame, previous= get_frame_sub hd in
+    let frame, prev= get_frame_sub hd in
     let frame, _=
       ListLabels.fold_left tl
-        ~init:(frame, previous)
-        ~f:(fun (frame, previous) path->
-          let (frame_new, previous)= get_frame_sub ~previous path in
-          frame_merge frame frame_new, previous
+        ~init:(frame, prev)
+        ~f:(fun (frame, prev) path->
+          let (frame_new, prev)= get_frame_sub ~prev path in
+          frame_merge frame frame_new, prev
           )
     in Some frame
 
@@ -477,24 +477,24 @@ let sub_to_string_hum sub=
 let to_string_hum t=
   t |> List.map sub_to_string_hum |> String.concat ";; "
 
-let sub_to_string_svg ?previous ?(indent=0) sub=
+let sub_to_string_svg ?prev ?(indent=0) sub=
   let indent= String.make indent ' ' in
   let start= match sub.start with
-    | Absolute (x, y)-> sprintf "\n%sM %s,%s"
+    | Absolute p-> sprintf "\n%sM %s,%s"
       indent
-      (string_of_float x)
-      (string_of_float y)
-    | Relative (dx, dy)->
-      match previous with
-      | Some (x, y)->
+      (string_of_float p.x)
+      (string_of_float p.y)
+    | Relative p->
+      match prev with
+      | Some Point.{x;y}->
         sprintf "\n%sM %s,%s" indent
-          (string_of_float (x+.dx))
-          (string_of_float (y+.dy))
+          (string_of_float (x+.p.x))
+          (string_of_float (y+.p.y))
       | None->
         sprintf "\n%sm %s,%s"
           indent
-          (string_of_float dx)
-          (string_of_float dy)
+          (string_of_float p.x)
+          (string_of_float p.y)
   and segments=
     sub.segments |> List.map string_of_command_svg
   in
@@ -588,7 +588,7 @@ module Parser = struct
     let* point6= float1 in
     return (point1, point2, point3, point4, point5, point6)
 
-  let point= float2
+  let point = let* (x,y)= float2 in return Point.{x;y}
 
   let tag_M= char 'M'
   let tag_m= char 'm'
@@ -675,9 +675,9 @@ module Parser = struct
     let* _= tag_C in
     let* points= sepStartBy1 (option spaces) float6 in
     let descs= points |> List.map (fun (p1, p2, p3, p4, p5, p6)->
-      { ctrl1=(p1, p2);
-        ctrl2=(p3, p4);
-        end'=(p5, p6);
+      { ctrl1={x=p1; y=p2};
+        ctrl2={x=p3; y=p4};
+        end'={x=p5; y=p6};
       })
     in
     return @@ Cmd_C descs
@@ -685,9 +685,9 @@ module Parser = struct
     let* _= tag_c in
     let* points= sepStartBy1 (option spaces) float6 in
     let descs= points |> List.map (fun (p1, p2, p3, p4, p5, p6)->
-      { ctrl1=(p1, p2);
-        ctrl2=(p3, p4);
-        end'=(p5, p6);
+      { ctrl1={x=p1; y=p2};
+        ctrl2={x=p3; y=p4};
+        end'={x=p5; y=p6};
       })
     in
     return @@ Cmd_c descs
@@ -695,8 +695,8 @@ module Parser = struct
     let* _= tag_S in
     let* points= sepStartBy1 (option spaces) float4 in
     let descs= points |> List.map (fun (p1, p2, p3, p4)->
-      { ctrl2=(p1, p2);
-        end'=(p3, p4);
+      { ctrl2={x=p1; y=p2};
+        end'={x=p3; y=p4};
       })
     in
     return @@ Cmd_S descs
@@ -704,8 +704,8 @@ module Parser = struct
     let* _= tag_s in
     let* points= sepStartBy1 (option spaces) float4 in
     let descs= points |> List.map (fun (p1, p2, p3, p4)->
-      { ctrl2=(p1, p2);
-        end'=(p3, p4);
+      { ctrl2={x=p1; y=p2};
+        end'={x=p3; y=p4};
       })
     in
     return @@ Cmd_s descs
@@ -716,8 +716,8 @@ module Parser = struct
     let* points= sepStartBy1 (option spaces) float4 in
     let descs= points |> List.map (fun (p1, p2, p3, p4)->
       {
-        ctrl= (p1, p2);
-        end'= (p3, p4);
+        ctrl= {x=p1; y=p2};
+        end'= {x=p3; y=p4};
       })
     in
     return @@ Cmd_Q descs
@@ -725,8 +725,8 @@ module Parser = struct
     let* _= tag_q in
     let* points= sepStartBy1 (option spaces) float4 in
     let descs= points |> List.map (fun (p1, p2, p3, p4)->
-      { ctrl=(p1, p2);
-        end'=(p3, p4);
+      { ctrl={x=p1; y=p2};
+        end'={x=p3; y=p4};
       })
     in
     return @@ Cmd_q descs
@@ -911,65 +911,62 @@ let sub_of_path (path:Path.t)=
   in
   { start; segments }
 
-let sub_to_path ?(prev=(0.,0.)) sub=
+let sub_to_path ?(prev=Point.zero) sub=
   let rec to_path prev segments=
+    let open Point in
     match segments with
     | []-> []
     | Cmd_L point :: tl-> Path.Line point :: to_path point tl
     | Cmd_l point :: tl->
-      let next= point_add prev point in
+      let next= prev + point in
       Line next :: to_path next tl
-    | Cmd_H float :: tl->
-      let (_x, y)= prev in
-      let next= (float, y) in
+    | Cmd_H x :: tl->
+      let next= {x; y= prev.y} in
       Line next :: to_path next tl
-    | Cmd_h float :: tl->
-      let (x, y)= prev in
-      let next= (x+.float, y) in
+    | Cmd_h dx :: tl->
+      let next= {prev with x= prev.x+.dx} in
       Line next :: to_path next tl
-    | Cmd_V float :: tl->
-      let (x, _y)= prev in
-      let next= (x, float) in
+    | Cmd_V y :: tl->
+      let next= {x= prev.x; y} in
       Line next :: to_path next tl
-    | Cmd_v float :: tl->
-      let (x, y)= prev in
-      let next= (x, y+.float) in
+    | Cmd_v dy :: tl->
+      let next= {prev with y= prev.y+.dy} in
       Line next :: to_path next tl
 
     | Cmd_C {ctrl1;ctrl2;end'} :: tl->
       Ccurve {ctrl1;ctrl2;end'} :: to_path end' tl
     | Cmd_c {ctrl1;ctrl2;end'} :: tl->
-      let ctrl1= point_add prev ctrl1
-      and ctrl2= point_add prev ctrl2
-      and end'= point_add prev end' in
+      let ctrl1= prev + ctrl1
+      and ctrl2= prev + ctrl2
+      and end'= prev + end' in
       Ccurve {ctrl1; ctrl2; end'} :: to_path end' tl
     | Cmd_S {ctrl2; end'} :: tl->
       SCcurve {ctrl= ctrl2; end'} :: to_path end' tl
     | Cmd_s {ctrl2; end'} :: tl->
-      let ctrl= point_add prev ctrl2
-      and end'= point_add prev end' in
+      let ctrl= prev + ctrl2
+      and end'= prev + end' in
       SCcurve {ctrl; end'} :: to_path end' tl
 
     | Cmd_Q {ctrl; end'} :: tl->
       Qcurve {ctrl; end'} :: to_path end' tl
     | Cmd_q {ctrl; end'} :: tl->
-      let ctrl= point_add prev ctrl
-      and end'= point_add prev end' in
+      let ctrl= prev + ctrl
+      and end'= prev + end' in
       Qcurve {ctrl; end'} :: to_path end' tl
     | Cmd_T {end'} :: tl-> SQcurve end' :: to_path end' tl
     | Cmd_t {end'} :: tl->
-      let end'= (point_add prev end') in
+      let end'= prev + end' in
       SQcurve end' :: to_path end' tl
 
     | Cmd_A arc_desc :: tl-> to_path arc_desc.end' tl
     | Cmd_a arc_desc :: tl->
-      let end'= point_add prev arc_desc.end' in
+      let end'= prev + arc_desc.end' in
       to_path end' tl
   in
   let start=
     match sub.start with
     | Absolute point-> point
-    | Relative point-> point_add prev point
+    | Relative point-> Point.(prev + point)
   in
   let segments= sub.segments |> to_path start in
   Path.{ start; segments }

@@ -8,7 +8,7 @@
  * This file is a part of Smaji_glyph_outline.
  *)
 
-open Smaji_glyph_outline
+open Smaji_glyph_path
 
 
 module Svg = struct
@@ -75,25 +75,25 @@ module Svg = struct
   let viewBox= Svg.ViewBox.{ min_x= 1.0; min_y= 2.0; width= 4.0; height= 3.0 }
   and path1=
     Svg.Path.{
-      start= Absolute (1.0, 2.);
+      start= Absolute {x=1.0; y=2.};
       segments= [
-        Cmd_l (3.0, 4.);
+        Cmd_l {x=3.0; y=4.};
         Cmd_v 5.0;
         Cmd_h 6.0;
         ];
     }
   and path2=
     Svg.Path.{
-      start= Relative (1.0, 2.);
+      start= Relative {x=1.0; y=2.};
       segments= [
-        Cmd_l (3.0, 4.);
+        Cmd_l {x=3.0; y=4.};
         Cmd_v 5.0;
         Cmd_h 6.0;
-        Cmd_t { end'= (7.0, 8.) };
+        Cmd_t { end'= {x=7.0; y=8.} };
         Cmd_C {
-          ctrl1= (1.0, 2.);
-          ctrl2= (3.0, 4.);
-          end'= (5.0, 6.);
+          ctrl1= {x=1.0; y=2.};
+          ctrl2= {x=3.0; y=4.};
+          end'= {x=5.0; y=6.};
           };
         ];
     }
@@ -322,9 +322,9 @@ module Glif = struct
       | Contour contour->
         ListLabels.iter contour.points
           ~f:(fun point-> printf "%s %s %s\n"
-            (string_of_contour_point_type point.point_type)
-            (Utils.string_of_float point.x)
-            (Utils.string_of_float point.y)
+            (string_of_contour_point_type point.typ)
+            (Utils.string_of_float point.p.x)
+            (Utils.string_of_float point.p.y)
             ))
     | None-> print_endline "");
     [%expect "
@@ -350,7 +350,7 @@ module Glif = struct
           contour.points
             |> Glif.outline_of_points
             |> Option.iter @@ fun path->
-              path |> Outline.path_to_string |> print_endline
+              path |> Path.path_to_string |> print_endline
         );
     [%expect "
       {
@@ -369,7 +369,7 @@ module Glif = struct
           contour.points
             |> Glif.outline_of_points
             |> Option.iter @@ fun path->
-              path |> Outline.path_to_string |> print_endline
+              path |> Path.path_to_string |> print_endline
         );
     [%expect "
       {
@@ -405,7 +405,7 @@ module Glif = struct
             |> Glif.outline_of_points
             |> Option.iter @@ fun path->
               path
-                |> Glif.points_of_outline
+                |> Glif.points_of_outline_exn
                 |> List.map Glif.string_of_contour_point
                 |> String.concat "\n"
                 |> print_endline

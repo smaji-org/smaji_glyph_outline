@@ -11,7 +11,8 @@
 open Utils
 open Printf
 
-type point = float * float
+module Point= Point.PointF
+type point = Point.t
 
 type cubic_desc = { ctrl1 : point; ctrl2 : point; end' : point; }
 
@@ -48,9 +49,8 @@ let string_of_contour_point_type= function
   | Qcurve   -> "qcurve"
 
 type contour_point= {
-  x: float;
-  y: float;
-  point_type: contour_point_type;
+  p: point;
+  typ: contour_point_type;
 }
 
 type contour= {
@@ -60,17 +60,17 @@ type contour= {
 
 let string_of_contour_point point=
   sprintf "%s (%s,%s)"
-    (string_of_contour_point_type point. point_type)
-    (Utils.string_of_float point.x)
-    (Utils.string_of_float point.y)
+    (string_of_contour_point_type point.typ)
+    (Utils.string_of_float point.p.x)
+    (Utils.string_of_float point.p.y)
 
 let glif_string_of_contour_point ?(indent=0) point=
   let indent_str= String.make indent ' ' in
   sprintf "%s<point x=\"%s\" y=\"%s\" type=\"%s\" />"
     indent_str
-    (string_of_float point.x)
-    (string_of_float point.y)
-    (string_of_contour_point_type point. point_type)
+    (string_of_float point.p.x)
+    (string_of_float point.p.y)
+    (string_of_contour_point_type point.typ)
 
 let component_default= {
   base= None;
@@ -167,15 +167,15 @@ let get_outline glyph=
                   |> xml_attr_opt "y"
                   |> Option.value ~default:"0.0"
                   |> float_of_string in
-                let point_type= attrs
+                let p= Point.{x;y} in
+                let typ= attrs
                   |> xml_attr_opt "type"
                   |> Option.value ~default:""
                   |> contour_point_type_of_string
                 in
                 Some {
-                  x;
-                  y;
-                  point_type;
+                  p;
+                  typ;
                 }
               | _-> None
               )
@@ -252,7 +252,7 @@ type ('a, 'b) either=
 
 let outline_of_points (points:contour_point list)=
   let rec find_start elt=
-    match elt.Circle.value.point_type with
+    match elt.Circle.value.typ with
     | Line-> elt
     | Offcurve-> find_start elt.right
     | Curve-> elt
@@ -260,34 +260,35 @@ let outline_of_points (points:contour_point list)=
   in
   let circle= Circle.of_list points in
   let build_next building (elt:contour_point Circle.elt)=
+    let open Point in
     let value= elt.value in
-    match value.point_type with
-    | Line-> Right (Path.Line (value.x, value.y))
+    match value.typ with
+    | Line-> Right (Path.Line {x= value.p.x; y= value.p.y})
     | Offcurve-> Left (Dlist.insert_last building value)
     | Curve->
       (match Dlist.length building with
-      | 0-> Right (Path.Line (value.x, value.y))
+      | 0-> Right (Path.Line {x= value.p.x; y= value.p.y})
       | 1->
         let elt_ctrl= Dlist.head building |> Option.get in
-        let ctrl= (elt_ctrl.value.x, elt_ctrl.value.y) in
-        let end'= (elt.value.x, elt.value.y) in
+        let ctrl= Point.{x= elt_ctrl.value.p.x; y= elt_ctrl.value.p.y} in
+        let end'= Point.{x= elt.value.p.x; y= elt.value.p.y} in
         Right (Path.Qcurve { ctrl ; end' })
       | 2->
         let elt_ctrl1= Dlist.head building |> Option.get in
         let elt_ctrl2= elt_ctrl1.right |> Option.get in
-        let ctrl1= (elt_ctrl1.value.x, elt_ctrl1.value.y) in
-        let ctrl2= (elt_ctrl2.value.x, elt_ctrl2.value.y) in
-        let end'= (elt.value.x, elt.value.y) in
+        let ctrl1= {x=elt_ctrl1.value.p.x; y= elt_ctrl1.value.p.y} in
+        let ctrl2= {x=elt_ctrl2.value.p.x; y=elt_ctrl2.value.p.y} in
+        let end'= {x=elt.value.p.x; y=elt.value.p.y} in
         Right (Path.Ccurve { ctrl1; ctrl2; end' })
       | _-> assert false;
       )
     | Qcurve->
       (match Dlist.length building with
-      | 0-> Right (Path.Line (value.x, value.y))
+      | 0-> Right (Path.Line {x=value.p.x; y=value.p.y})
       | 1->
         let elt_ctrl= Dlist.head building |> Option.get in
-        let ctrl= (elt_ctrl.value.x, elt_ctrl.value.y) in
-        let end'= (elt.value.x, elt.value.y) in
+        let ctrl= elt_ctrl.value.p in
+        let end'= elt.value.p in
         Right (Path.Qcurve { ctrl ; end' })
       | _-> assert false;
       )
@@ -308,65 +309,70 @@ let outline_of_points (points:contour_point list)=
     in
     let building= Dlist.of_list [] in
     let segments= build building start.right in
-    let start= (start.value.x, start.value.y) in
+    let start= start.value.p in
     Some Path.{ start; segments }
 
-let points_of_outline(path:Path.t)=
-  let dummy= ((0.,0.),(0.,0.)) in
-  let rec to_points prev(*used to calc the reflection of the control point*) (segments:Path.segment list)=
+let points_of_path (path:Path.t)=
+  let dummy= (Point.zero, Point.zero) in
+  let rec to_points
+    prev (* used to calc the reflection of the control point *)
+    (segments: Path.segment list)
+    =
     match segments with
     | []-> []
     | segment::tl->
       match segment with
-      | Line (x, y)-> { x; y; point_type= Line } :: to_points dummy tl
+      | Line p-> { p; typ= Line } :: to_points dummy tl
       | Qcurve { ctrl; end'; }->
         let p1=
-          let (x,y)= ctrl in
-          { x; y; point_type= Offcurve }
+          { p= ctrl; typ= Offcurve }
         and p2=
-          let (x,y)= end' in
-          { x; y; point_type= Qcurve } in
+          { p= end'; typ= Qcurve } in
         p1::p2 :: to_points (ctrl, end') tl
       | Ccurve { ctrl1; ctrl2; end'; }->
         let p1=
-          let (x,y)= ctrl1 in
-          { x; y; point_type= Offcurve }
+          { p= ctrl1; typ= Offcurve }
         and p2=
-          let (x,y)= ctrl2 in
-          { x; y; point_type= Offcurve }
+          { p= ctrl2; typ= Offcurve }
         and p3=
-          let (x,y)= end' in
-          { x; y; point_type= Curve } in
+          { p= end'; typ= Curve } in
         p1::p2::p3 :: to_points (ctrl2, end') tl
       | SQcurve end'->
         let ctrl=
-          let ((x1,y1), (x2,y2))= prev in
-          (x2 *. 2. -. x1, y2 *. 2. -. y1)
+          let (p1, p2)= prev in
+          Point.(p2 + p2 - p1)
         in
         let p1=
-          let (x,y)= ctrl in
-          { x; y; point_type= Offcurve }
+          { p= ctrl; typ= Offcurve }
         and p2=
-          let (x,y)= end' in
-          { x; y; point_type= Qcurve } in
+          { p= end'; typ= Qcurve } in
         p1::p2 :: to_points (ctrl, end') tl
       | SCcurve { ctrl; end'; } ->
         let ctrl1=
-          let ((x1,y1), (x2,y2))= prev in
-          (x2 *. 2. -. x1, y2 *. 2. -. y1)
+          let (p1, p2)= prev in
+          Point.(p2 + p2 - p1)
         in
         let p1=
-          let (x,y)= ctrl1 in
-          { x; y; point_type= Offcurve }
+          { p= ctrl1; typ= Offcurve }
         and p2=
-          let (x,y)= ctrl in
-          { x; y; point_type= Offcurve }
+          { p= ctrl; typ= Offcurve }
         and p3=
-          let (x,y)= end' in
-          { x; y; point_type= Curve } in
+          { p= end'; typ= Curve } in
         p1::p2::p3 :: to_points (ctrl, end') tl
   in
   to_points dummy path.segments
+
+let points_of_outline (path:Path.t)=
+  if Path.is_open path then
+    None
+  else
+    path |> points_of_path |> Option.some
+
+let points_of_outline_exn (path:Path.t)=
+  if Path.is_open path then
+    invalid_arg "the path is not closed"
+  else
+    points_of_path path
 
 let glif_string_of_unicodes ?(indent=0) unicodes=
   let indent_str= String.make indent ' ' in

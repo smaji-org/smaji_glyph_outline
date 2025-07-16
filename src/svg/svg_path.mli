@@ -8,7 +8,8 @@
  * This file is a part of Smaji_glyph_path.
  *)
 
-type point = Path.point
+module Point= Point.PointF
+type point = Point.t
 
 (** {2 Path command descriptions} *)
 
@@ -57,11 +58,9 @@ type start_point = Absolute of point | Relative of point
 
 (** {2 Point or path command adjustment } *)
 
-val point_add : point -> point -> point
+val point_translate : ?dx:float -> ?dy:float -> point -> point
 
-val point_translate : dx:float -> dy:float -> point -> point
-
-val point_scale : x:float -> y:float -> point -> point
+val point_scale : ?x:float -> ?y:float -> point -> point
 
 val start_point_adjust_point :
   dx:float -> dy:float -> start_point -> start_point
@@ -113,7 +112,7 @@ type t = sub list
 
 (** {2 Frame and frame arithemetic } *)
 
-type frame = { px : float; nx : float; py : float; ny : float; }
+type frame = { nx : float; ny : float; px : float; py : float; }
 
 val frame_merge : frame -> frame -> frame
 
@@ -121,7 +120,7 @@ val string_of_frame : frame -> string
 
 val frame_update : point -> frame -> frame
 
-val get_frame_sub : ?previous:point -> sub -> frame * point
+val get_frame_sub : ?prev:point -> sub -> frame * point
 
 val get_frame : t -> frame option
 
@@ -143,7 +142,7 @@ val sub_to_string_hum : sub -> string
 val to_string_hum : t -> string
 
 val sub_to_string_svg :
-  ?previous:point -> ?indent:int -> sub -> string
+  ?prev:point -> ?indent:int -> sub -> string
 
 val to_string_svg : ?indent:int -> t -> string
 
@@ -199,7 +198,7 @@ sig
     result
   val point :
     MiniParsec.state ->
-    ((float * float) * MiniParsec.state, MiniParsec.error) result
+    (point * MiniParsec.state, MiniParsec.error) result
   val tag_M :
     MiniParsec.state ->
     (char * MiniParsec.state, MiniParsec.pos * string) result

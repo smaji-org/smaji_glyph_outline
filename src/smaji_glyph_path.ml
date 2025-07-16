@@ -28,10 +28,7 @@ let glif_of_svg_exn (svg:Svg.t)=
         let identifier= None
         and points= sub
           |> Svg.Path.sub_to_path
-          |> (fun path->
-            if Path.is_closed path then path
-            else invalid_arg "path is not closed")
-          |> Glif.points_of_outline
+          |> Glif.points_of_outline_exn
         in
         Glif.Contour { identifier; points })
       |> List.concat
