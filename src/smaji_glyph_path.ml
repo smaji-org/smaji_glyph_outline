@@ -8,6 +8,7 @@
  * This file is a part of Smaji_glyph_path.
  *)
 
+module Point = Point
 module Path= Path
 module Svg= Svg
 module Glif= Glif

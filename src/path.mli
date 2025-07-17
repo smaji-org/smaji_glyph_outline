@@ -44,3 +44,11 @@ val is_closed : t -> bool
 val is_open : t -> bool
 (** Determine whether the path is open i.e. a stroke path *)
 
+val frame_segment : PointF.t -> segment -> frame
+(** calcuate the best fit frame from the given start point and segment *)
+
+val frame : t -> frame
+(** calcuate the best fit frame of the path *)
+
+val frame_algo_svg : t -> frame
+(** calcuate the best fit frame of the path by the algorithm used in SVG image processing *)

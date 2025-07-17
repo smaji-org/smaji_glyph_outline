@@ -27,6 +27,11 @@ type frame = {
   max_x: PointF.cell; max_y: PointF.cell;
 }
 
+let frame_dummy= {
+  min_x= Float.infinity; min_y= Float.infinity;
+  max_x= Float.neg_infinity; max_y= Float.neg_infinity;
+}
+
 let segment_to_string  ?(indent=0) segment=
   let open Printf in
   let indent= String.make indent ' ' in
@@ -65,4 +70,139 @@ let is_closed path=
   | None-> false
 
 let is_open= Fun.negate is_closed
+
+let frame_update (point:PointF.t) frame=
+  let min_x= min point.x frame.min_x
+  and min_y= min point.y frame.min_y
+  and max_x= max point.x frame.max_x
+  and max_y= max point.y frame.max_y in
+  { min_x; min_y; max_x; max_y }
+
+let frame_merge f1 f2=
+  let min_x= min f1.min_x f2.min_x
+  and min_y= min f1.min_y f2.min_y
+  and max_x= max f1.max_x f2.max_x
+  and max_y= max f1.max_y f2.max_y in
+  { min_x; min_y; max_x; max_y }
+
+let frame_of_points points=
+  List.fold_left (Fun.flip frame_update) frame_dummy points
+
+let frame_segment prev segment=
+  let init= frame_dummy |> frame_update prev in
+  match segment with
+  | Line end'-> init |> frame_update end'
+  | Qcurve { ctrl; end' }->
+    let plots= Bezier.plot_quadratic prev ctrl end' in
+    frame_of_points plots
+  | Ccurve { ctrl1; ctrl2; end' }->
+    let plots= Bezier.plot_cubic prev ctrl1 ctrl2 end' in
+    frame_of_points plots
+  | SQcurve _-> invalid_arg "SQcurve"
+  | SCcurve _-> invalid_arg "SCcurve"
+
+let frame path=
+  let rec calc acc prev_ctrl prev_end segments=
+    match segments with
+    | []-> acc
+    | Line end' ::tl->
+      let acc= frame_update end' acc in
+      calc acc None end' tl
+    | Qcurve { ctrl; end' } ::tl->
+      let acc= Bezier.plot_quadratic prev_end ctrl end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc (Some ctrl) end' tl
+    | Ccurve { ctrl1; ctrl2; end' } ::tl->
+      let acc= Bezier.plot_cubic prev_end ctrl1 ctrl2 end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc (Some ctrl2) end' tl
+    | SQcurve end' ::tl->
+      let ctrl=
+        match prev_ctrl with
+        | Some prev_ctrl-> PointF.(prev_end + prev_end - prev_ctrl)
+        | None-> prev_end
+      in
+      let acc= Bezier.plot_quadratic prev_end ctrl end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc (Some ctrl) end' tl
+    | SCcurve { ctrl=ctrl2; end' } ::tl->
+      let ctrl1=
+        match prev_ctrl with
+        | Some prev_ctrl-> PointF.(prev_end + prev_end - prev_ctrl)
+        | None-> prev_end
+      in
+      let acc= Bezier.plot_cubic prev_end ctrl1 ctrl2 end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc (Some ctrl2) end' tl
+  in
+  let acc= frame_dummy
+  and prev_end= path.start
+  and prev_ctrl= None in
+  calc acc prev_ctrl prev_end path.segments
+
+let frame_algo_svg path=
+  let rec calc acc prev prev_ctrl prev_end segments=
+    match segments with | []-> acc | segment::tl->
+    match segment with
+    | Line end'->
+      let acc= frame_update end' acc in
+      calc acc segment None end' tl
+    | Qcurve { ctrl; end' }->
+      let acc= Bezier.plot_quadratic prev_end ctrl end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc segment (Some ctrl) end' tl
+    | Ccurve { ctrl1; ctrl2; end' }->
+      let acc= Bezier.plot_cubic prev_end ctrl1 ctrl2 end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc segment (Some ctrl2) end' tl
+    | SQcurve end'->
+      let ctrl=
+        match prev_ctrl with
+        | Some prev_ctrl->
+          (match prev with
+          | Qcurve _
+          | SQcurve _ ->
+            PointF.(prev_end + prev_end - prev_ctrl)
+          | _-> prev_end)
+        | None-> prev_end
+      in
+      let acc= Bezier.plot_quadratic prev_end ctrl end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc segment (Some ctrl) end' tl
+    | SCcurve { ctrl=ctrl2; end' }->
+      let ctrl1=
+        match prev_ctrl with
+        | Some prev_ctrl->
+          (match prev with
+          | Ccurve _
+          | SCcurve _ ->
+            PointF.(prev_end + prev_end - prev_ctrl)
+          | _-> prev_end)
+        | None-> prev_end
+      in
+      let acc= Bezier.plot_cubic prev_end ctrl1 ctrl2 end'
+        |> frame_of_points
+        |> frame_merge acc
+      in
+      calc acc segment (Some ctrl2) end' tl
+  in
+  let acc= frame_dummy
+  and prev= Line {x= infinity; y= infinity}
+  and prev_end= path.start
+  and prev_ctrl= None in
+  calc acc prev prev_ctrl prev_end path.segments
 

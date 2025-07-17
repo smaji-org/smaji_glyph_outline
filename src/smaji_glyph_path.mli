@@ -10,6 +10,9 @@
 
 (** A closed path is an outline. In a glif file, all its contours, by definition, are outlines. *)
 
+module Point = Point
+(** Module used for basic point data structure *)
+
 module Path = Path
 (** Module used for basic path data structure *)
 

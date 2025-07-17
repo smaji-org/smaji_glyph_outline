@@ -11,7 +11,50 @@
 open Smaji_glyph_path
 
 
-module Svg = struct
+module TestPath = struct
+  open Path
+  open Point.PointF
+  open Printf
+
+  let%expect_test "frame_reflect"=
+    let start= {x= 200.; y= 400. }
+    and segments= [
+      Ccurve {
+        ctrl1= {x= 100.; y= 600. };
+        ctrl2= {x= 200.; y= 800. };
+        end'= {x= 400.; y= 500. };
+      };
+      SQcurve {x= 550.; y= 400. };
+      ]
+    in
+    let path= { start; segments } in
+    let frame= frame path in
+    printf "%.3f, %.3f, %.3f, %.3f\n"
+      frame.min_x frame.min_y
+      frame.max_x frame.max_y;
+    [%expect "160.770, 320.000, 560.000, 652.982"]
+
+  let%expect_test "frame_algo_svg"=
+    let start= {x= 200.; y= 400. }
+    and segments= [
+      Ccurve {
+        ctrl1= {x= 100.; y= 600. };
+        ctrl2= {x= 200.; y= 800. };
+        end'= {x= 400.; y= 500. };
+      };
+      SQcurve {x= 550.; y= 400. };
+      ]
+    in
+    let path= { start; segments } in
+    let frame= frame_algo_svg path in
+    printf "%.3f, %.3f, %.3f, %.3f\n"
+      frame.min_x frame.min_y
+      frame.max_x frame.max_y;
+    [%expect "160.770, 400.000, 550.000, 652.982"]
+
+end
+
+module TestSvg = struct
   let%expect_test "move"=
     (match Svg.Path.of_string "M12,23-3,1m 0.2\n, \n0.3L 20 , 20" with
     | Some path->
@@ -309,7 +352,7 @@ module Svg = struct
 
 end
 
-module Glif = struct
+module TestGlif = struct
   open Glif
   open Printf
 
