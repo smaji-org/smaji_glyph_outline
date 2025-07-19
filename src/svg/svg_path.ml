@@ -8,6 +8,7 @@
  * This file is a part of Smaji_glyph_path.
  *)
 
+
 open Utils
 
 module Point= Point.PointF
@@ -291,34 +292,7 @@ type sub= {
 
 type t= sub list
 
-type frame= {
-  nx: float;
-  ny: float;
-  px: float;
-  py: float;
-}
-
-let frame_merge f1 f2=
-  let px= max f1.px f2.px
-  and nx= min f1.nx f2.nx
-  and py= max f1.py f2.py
-  and ny= min f1.ny f2.ny in
-  { px; nx; py; ny }
-
-let string_of_frame frame=
-  sprintf "{ px= %s; nx= %s; py= %s; ny= %s }"
-    (string_of_float frame.px)
-    (string_of_float frame.nx)
-    (string_of_float frame.py)
-    (string_of_float frame.ny)
-
-let frame_update Point.{x; y} frame=
-  let nx= min x frame.nx
-  and ny= min y frame.ny
-  and px= max x frame.px
-  and py= max y frame.py in
-  { nx; ny; px; py }
-
+(*
 let get_frame_sub ?(prev=Point.{x=0.;y=0.}) sub=
   let frame=
     match sub.start with
@@ -424,6 +398,89 @@ let get_frame_sub ?(prev=Point.{x=0.;y=0.}) sub=
       )
   in
   (frame, prev_end)
+*)
+
+let sub_of_path (path:Path.t)=
+  let start= Absolute path.start
+  and segments= path.segments |> List.map @@ function
+    | Path.Line point-> Cmd_L point
+    | Qcurve { ctrl; end'; }-> Cmd_Q { ctrl; end' }
+    | Ccurve { ctrl1; ctrl2; end'; }-> Cmd_C { ctrl1; ctrl2; end' }
+    | SQcurve end'-> Cmd_T { end' }
+    | SCcurve { ctrl; end'; }-> Cmd_S { ctrl2= ctrl; end' }
+  in
+  { start; segments }
+
+let sub_to_path ?(straighten=false) ?(prev=Point.zero) sub=
+  let[@tail_mod_cons] rec to_path prev segments=
+    let open Point in
+    match segments with
+    | []-> []
+    | Cmd_L point :: tl-> Path.Line point :: to_path point tl
+    | Cmd_l point :: tl->
+      let next= prev + point in
+      Line next :: to_path next tl
+    | Cmd_H x :: tl->
+      let next= {x; y= prev.y} in
+      Line next :: to_path next tl
+    | Cmd_h dx :: tl->
+      let next= {prev with x= prev.x+.dx} in
+      Line next :: to_path next tl
+    | Cmd_V y :: tl->
+      let next= {x= prev.x; y} in
+      Line next :: to_path next tl
+    | Cmd_v dy :: tl->
+      let next= {prev with y= prev.y+.dy} in
+      Line next :: to_path next tl
+    | Cmd_C {ctrl1;ctrl2;end'} :: tl->
+      Ccurve {ctrl1;ctrl2;end'} :: to_path end' tl
+    | Cmd_c {ctrl1;ctrl2;end'} :: tl->
+      let ctrl1= prev + ctrl1
+      and ctrl2= prev + ctrl2
+      and end'= prev + end' in
+      Ccurve {ctrl1; ctrl2; end'} :: to_path end' tl
+    | Cmd_S {ctrl2; end'} :: tl->
+      SCcurve {ctrl= ctrl2; end'} :: to_path end' tl
+    | Cmd_s {ctrl2; end'} :: tl->
+      let ctrl= prev + ctrl2
+      and end'= prev + end' in
+      SCcurve {ctrl; end'} :: to_path end' tl
+
+    | Cmd_Q {ctrl; end'} :: tl->
+      Qcurve {ctrl; end'} :: to_path end' tl
+    | Cmd_q {ctrl; end'} :: tl->
+      let ctrl= prev + ctrl
+      and end'= prev + end' in
+      Qcurve {ctrl; end'} :: to_path end' tl
+    | Cmd_T {end'} :: tl-> SQcurve end' :: to_path end' tl
+    | Cmd_t {end'} :: tl->
+      let end'= prev + end' in
+      SQcurve end' :: to_path end' tl
+
+    | Cmd_A arc_desc :: tl->
+      if straighten then
+        let end'= arc_desc.end' in
+        Path.Line end':: to_path end' tl
+      else
+        invalid_arg "elliptical arc unsupported"
+    | Cmd_a arc_desc :: tl->
+      if straighten then
+        let end'= arc_desc.end' + prev in
+        Path.Line end':: to_path end' tl
+      else
+        invalid_arg "elliptical arc unsupported"
+  in
+  let start=
+    match sub.start with
+    | Absolute point-> point
+    | Relative point-> Point.(prev + point)
+  in
+  let segments= sub.segments |> to_path start in
+  Path.{ start; segments }
+
+let get_frame_sub ?(straighten=false) ?(prev=Point.zero) sub=
+  sub |> sub_to_path ~straighten ~prev |> Path.frame_algo_svg
+
 
 let get_frame t=
   match t with
@@ -435,7 +492,7 @@ let get_frame t=
         ~init:(frame, prev)
         ~f:(fun (frame, prev) path->
           let (frame_new, prev)= get_frame_sub ~prev path in
-          frame_merge frame frame_new, prev
+          (Path.frame_merge frame frame_new, prev)
           )
     in Some frame
 
@@ -446,7 +503,7 @@ let get_frame_paths paths=
       match get_frame path with
       | Some frame->
         (match acc with
-        | Some acc-> Some (frame_merge acc frame)
+        | Some acc-> Some (Path.frame_merge acc frame)
         | None-> Some frame)
       | None-> acc)
 
@@ -899,75 +956,4 @@ let of_string str=
     let t, _= of_parser_commands commands in
     Some t
   | Error _-> None
-
-let sub_of_path (path:Path.t)=
-  let start= Absolute path.start
-  and segments= path.segments |> List.map @@ function
-    | Path.Line point-> Cmd_L point
-    | Qcurve { ctrl; end'; }-> Cmd_Q { ctrl; end' }
-    | Ccurve { ctrl1; ctrl2; end'; }-> Cmd_C { ctrl1; ctrl2; end' }
-    | SQcurve end'-> Cmd_T { end' }
-    | SCcurve { ctrl; end'; }-> Cmd_S { ctrl2= ctrl; end' }
-  in
-  { start; segments }
-
-let sub_to_path ?(prev=Point.zero) sub=
-  let rec to_path prev segments=
-    let open Point in
-    match segments with
-    | []-> []
-    | Cmd_L point :: tl-> Path.Line point :: to_path point tl
-    | Cmd_l point :: tl->
-      let next= prev + point in
-      Line next :: to_path next tl
-    | Cmd_H x :: tl->
-      let next= {x; y= prev.y} in
-      Line next :: to_path next tl
-    | Cmd_h dx :: tl->
-      let next= {prev with x= prev.x+.dx} in
-      Line next :: to_path next tl
-    | Cmd_V y :: tl->
-      let next= {x= prev.x; y} in
-      Line next :: to_path next tl
-    | Cmd_v dy :: tl->
-      let next= {prev with y= prev.y+.dy} in
-      Line next :: to_path next tl
-
-    | Cmd_C {ctrl1;ctrl2;end'} :: tl->
-      Ccurve {ctrl1;ctrl2;end'} :: to_path end' tl
-    | Cmd_c {ctrl1;ctrl2;end'} :: tl->
-      let ctrl1= prev + ctrl1
-      and ctrl2= prev + ctrl2
-      and end'= prev + end' in
-      Ccurve {ctrl1; ctrl2; end'} :: to_path end' tl
-    | Cmd_S {ctrl2; end'} :: tl->
-      SCcurve {ctrl= ctrl2; end'} :: to_path end' tl
-    | Cmd_s {ctrl2; end'} :: tl->
-      let ctrl= prev + ctrl2
-      and end'= prev + end' in
-      SCcurve {ctrl; end'} :: to_path end' tl
-
-    | Cmd_Q {ctrl; end'} :: tl->
-      Qcurve {ctrl; end'} :: to_path end' tl
-    | Cmd_q {ctrl; end'} :: tl->
-      let ctrl= prev + ctrl
-      and end'= prev + end' in
-      Qcurve {ctrl; end'} :: to_path end' tl
-    | Cmd_T {end'} :: tl-> SQcurve end' :: to_path end' tl
-    | Cmd_t {end'} :: tl->
-      let end'= prev + end' in
-      SQcurve end' :: to_path end' tl
-
-    | Cmd_A arc_desc :: tl-> to_path arc_desc.end' tl
-    | Cmd_a arc_desc :: tl->
-      let end'= prev + arc_desc.end' in
-      to_path end' tl
-  in
-  let start=
-    match sub.start with
-    | Absolute point-> point
-    | Relative point-> Point.(prev + point)
-  in
-  let segments= sub.segments |> to_path start in
-  Path.{ start; segments }
 

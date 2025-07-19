@@ -112,19 +112,11 @@ type t = sub list
 
 (** {2 Frame and frame arithemetic } *)
 
-type frame = { nx : float; ny : float; px : float; py : float; }
+val get_frame_sub : ?straighten:bool -> ?prev:point -> sub -> Path.frame * point
 
-val frame_merge : frame -> frame -> frame
+val get_frame : t -> Path.frame option
 
-val string_of_frame : frame -> string
-
-val frame_update : point -> frame -> frame
-
-val get_frame_sub : ?prev:point -> sub -> frame * point
-
-val get_frame : t -> frame option
-
-val get_frame_paths : t list -> frame option
+val get_frame_paths : t list -> Path.frame option
 
 (** {2 Adjust sub segment or path } *)
 module Adjust :
@@ -313,6 +305,6 @@ val of_string : string -> t option
 val sub_of_path : Path.t -> sub
 (** Convert [Path.t] to [sub] command *)
 
-val sub_to_path : ?prev:point -> sub -> Path.t
-(** Convert [sub] command to [Path.t] *)
+val sub_to_path : ?straighten:bool -> ?prev:point -> sub -> Path.t
+(** Convert [sub] command to [Path.t], this function will [straighten] elliptical arc if is specified as [true], otherwise Invalid_argument is raised *)
 

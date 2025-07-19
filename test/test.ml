@@ -13,7 +13,7 @@ open Smaji_glyph_path
 
 module TestPath = struct
   open Path
-  open Point.PointF
+  open Point
   open Printf
 
   let%expect_test "frame_reflect"=
@@ -28,7 +28,7 @@ module TestPath = struct
       ]
     in
     let path= { start; segments } in
-    let frame= frame path in
+    let frame, _prev= frame path in
     printf "%.3f, %.3f, %.3f, %.3f\n"
       frame.min_x frame.min_y
       frame.max_x frame.max_y;
@@ -46,7 +46,7 @@ module TestPath = struct
       ]
     in
     let path= { start; segments } in
-    let frame= frame_algo_svg path in
+    let frame, _prev= frame_algo_svg path in
     printf "%.3f, %.3f, %.3f, %.3f\n"
       frame.min_x frame.min_y
       frame.max_x frame.max_y;
@@ -56,9 +56,9 @@ end
 
 module TestSvg = struct
   let%expect_test "move"=
-    (match Svg.Path.of_string "M12,23-3,1m 0.2\n, \n0.3L 20 , 20" with
+    (match Svg.Svg_path.of_string "M12,23-3,1m 0.2\n, \n0.3L 20 , 20" with
     | Some path->
-      let path_str= path |> List.map Svg.Path.sub_to_string_hum |> String.concat "\n" in
+      let path_str= path |> List.map Svg.Svg_path.sub_to_string_hum |> String.concat "\n" in
       print_endline path_str
     | None-> ());
     [%expect "
@@ -67,43 +67,43 @@ module TestSvg = struct
 
 
   let%expect_test "move"=
-    (match Svg.Path.of_string "m12,23-3,1 2,3L20 , 20" with
+    (match Svg.Svg_path.of_string "m12,23-3,1 2,3L20 , 20" with
     | Some path->
-      let path_str= path |> List.map Svg.Path.sub_to_string_hum |> String.concat "\n" in
+      let path_str= path |> List.map Svg.Svg_path.sub_to_string_hum |> String.concat "\n" in
       print_endline path_str
     | None-> ());
     [%expect "Relative 12.0,23.0; l -3.0,1.0; l 2.0,3.0; L 20.0,20.0"]
 
 
   let%expect_test "Ccurve"=
-    (match Svg.Path.of_string "M20,20C1,2,3,4,5,6-1,2,3,4,5,6\n1,2,3,4,5,6" with
+    (match Svg.Svg_path.of_string "M20,20C1,2,3,4,5,6-1,2,3,4,5,6\n1,2,3,4,5,6" with
     | Some path->
-      let path_str= path |> List.map Svg.Path.sub_to_string_hum |> String.concat "\n" in
+      let path_str= path |> List.map Svg.Svg_path.sub_to_string_hum |> String.concat "\n" in
       print_endline path_str
     | None-> ());
     [%expect "Absolute 20.0,20.0; C {ctrl1: 1.0,2.0; ctrl2: 3.0,4.0; end: 5.0,6.0}; C {ctrl1: -1.0,2.0; ctrl2: 3.0,4.0; end: 5.0,6.0}; C {ctrl1: 1.0,2.0; ctrl2: 3.0,4.0; end: 5.0,6.0}"]
 
   let%expect_test "SCcurve"=
-    (match Svg.Path.of_string "M20,20S3,4,5,6-3,4,5,6\n3,4,5,6" with
+    (match Svg.Svg_path.of_string "M20,20S3,4,5,6-3,4,5,6\n3,4,5,6" with
     | Some path->
-      let path_str= path |> List.map Svg.Path.sub_to_string_hum |> String.concat "\n" in
+      let path_str= path |> List.map Svg.Svg_path.sub_to_string_hum |> String.concat "\n" in
       print_endline path_str
     | None-> ());
     [%expect "Absolute 20.0,20.0; S {ctrl2: 3.0,4.0; end: 5.0,6.0}; S {ctrl2: -3.0,4.0; end: 5.0,6.0}; S {ctrl2: 3.0,4.0; end: 5.0,6.0}"]
 
 
   let%expect_test "Qcurve"=
-    (match Svg.Path.of_string "M20,20Q1,2,3,4-1,2,3,4q1,2,3,4" with
+    (match Svg.Svg_path.of_string "M20,20Q1,2,3,4-1,2,3,4q1,2,3,4" with
     | Some path->
-      let path_str= path |> List.map Svg.Path.sub_to_string_hum |> String.concat "\n" in
+      let path_str= path |> List.map Svg.Svg_path.sub_to_string_hum |> String.concat "\n" in
       print_endline path_str
     | None-> ());
     [%expect "Absolute 20.0,20.0; Q {ctrl: 1.0,2.0; end: 3.0,4.0}; Q {ctrl: -1.0,2.0; end: 3.0,4.0}; q {ctrl: 1.0,2.0; end: 3.0,4.0}"]
 
   let%expect_test "SQcurve"=
-    (match Svg.Path.of_string "M20,20T1,2-1,2t1,2" with
+    (match Svg.Svg_path.of_string "M20,20T1,2-1,2t1,2" with
     | Some path->
-      let path_str= path |> List.map Svg.Path.sub_to_string_hum |> String.concat "\n" in
+      let path_str= path |> List.map Svg.Svg_path.sub_to_string_hum |> String.concat "\n" in
       print_endline path_str
     | None-> ());
     [%expect "Absolute 20.0,20.0; T 1.0,2.0; T -1.0,2.0; t 1.0,2.0"]
@@ -117,7 +117,7 @@ module TestSvg = struct
 
   let viewBox= Svg.ViewBox.{ min_x= 1.0; min_y= 2.0; width= 4.0; height= 3.0 }
   and path1=
-    Svg.Path.{
+    Svg.Svg_path.{
       start= Absolute {x=1.0; y=2.};
       segments= [
         Cmd_l {x=3.0; y=4.};
@@ -126,20 +126,21 @@ module TestSvg = struct
         ];
     }
   and path2=
-    Svg.Path.{
-      start= Relative {x=1.0; y=2.};
+    Svg.Svg_path.{
+      start= Relative {x=10.0; y=10.};
       segments= [
         Cmd_l {x=3.0; y=4.};
         Cmd_v 5.0;
         Cmd_h 6.0;
         Cmd_t { end'= {x=7.0; y=8.} };
         Cmd_C {
-          ctrl1= {x=1.0; y=2.};
-          ctrl2= {x=3.0; y=4.};
-          end'= {x=5.0; y=6.};
+          ctrl1= {x=100.0; y=100.};
+          ctrl2= {x=150.0; y=30.};
+          end'= {x=200.0; y=50.};
           };
         ];
     }
+
   let paths_individual= [
     [path1];
     [path2];
@@ -163,12 +164,12 @@ module TestSvg = struct
           Z\"
         />
         <path d=\"
-          m 1.0,2.0
+          m 10.0,10.0
           l 3.0,4.0
           v 5.0
           h 6.0
           t 7.0,8.0
-          C 1.0,2.0,3.0,4.0,5.0,6.0
+          C 100.0,100.0,150.0,30.0,200.0,50.0
           Z\"
         />
       </svg>"]
@@ -184,12 +185,12 @@ module TestSvg = struct
           h 6.0
           Z
 
-          m 1.0,2.0
+          m 10.0,10.0
           l 3.0,4.0
           v 5.0
           h 6.0
           t 7.0,8.0
-          C 1.0,2.0,3.0,4.0,5.0,6.0
+          C 100.0,100.0,150.0,30.0,200.0,50.0
           Z\"
         />
       </svg>"]
@@ -207,12 +208,12 @@ module TestSvg = struct
           Z\"
         />
         <path d=\"
-          m 1.0,2.0
+          m 10.0,10.0
           l 3.0,4.0
           v 5.0
           h 6.0
           t 7.0,8.0
-          C 0.0,0.0,2.0,2.0,4.0,4.0
+          C 99.0,98.0,149.0,28.0,199.0,48.0
           Z\"
         />
       </svg>"]
@@ -234,36 +235,37 @@ module TestSvg = struct
           Z\"
         />
         <path d=\"
-          m 1.0,2.0
+          m 10.0,10.0
           l 3.0,4.0
           v 5.0
           h 6.0
           t 7.0,8.0
-          C 2.0,4.0,4.0,6.0,6.0,8.0
+          C 101.0,102.0,151.0,32.0,201.0,52.0
           Z\"
         />
       </svg>"]
 
   let%expect_test "get_path_frame individual"=
     paths_individual
-      |> Svg.Path.get_frame_paths
+      |> Svg.Svg_path.get_frame_paths
       |> Option.iter (fun frame-> frame
-        |> Svg.Path.string_of_frame
+        |> Path.frame_to_string
         |> print_endline);
-    [%expect "{ px= 17.0; nx= 1.0; py= 19.0; ny= 2.0 }"]
+    [%expect "{ min_x= 1.0; min_y= 2.0; max_x= 200.0; max_y= 61.1130602954 }"]
+
 
   let%expect_test "get_path_frame continuous"=
     paths_continuous
-      |> Svg.Path.get_frame_paths
+      |> Svg.Svg_path.get_frame_paths
       |> Option.iter (fun frame-> frame
-        |> Svg.Path.string_of_frame
+        |> Path.frame_to_string
         |> print_endline);
-    [%expect "{ px= 27.0; nx= 1.0; py= 30.0; ny= 2.0 }"]
+    [%expect "{ min_x= 1.0; min_y= 2.0; max_x= 200.0; max_y= 64.2446752477 }"]
 
   let%expect_test "fit_frame_individual"=
     Svg.Adjust.viewBox_fitFrame_reset svg_individual |> Svg.svg_string_of_t |> print_endline;
     [%expect "
-      <svg viewBox=\"0.0,0.0 16.0,17.0\" xmlns=\"http://www.w3.org/2000/svg\">
+      <svg viewBox=\"0.0,0.0 199.0,59.1130602954\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
           M 0.0,0.0
           l 3.0,4.0
@@ -272,12 +274,12 @@ module TestSvg = struct
           Z\"
         />
         <path d=\"
-          m 1.0,2.0
+          m 10.0,10.0
           l 3.0,4.0
           v 5.0
           h 6.0
           t 7.0,8.0
-          C 0.0,0.0,2.0,2.0,4.0,4.0
+          C 99.0,98.0,149.0,28.0,199.0,48.0
           Z\"
         />
       </svg>"]
@@ -285,7 +287,7 @@ module TestSvg = struct
   let%expect_test "fit_frame_continuous"=
     Svg.Adjust.viewBox_fitFrame_reset svg_continuous |> Svg.svg_string_of_t |> print_endline;
     [%expect "
-      <svg viewBox=\"0.0,0.0 26.0,28.0\" xmlns=\"http://www.w3.org/2000/svg\">
+      <svg viewBox=\"0.0,0.0 199.0,62.2446752477\" xmlns=\"http://www.w3.org/2000/svg\">
         <path d=\"
           M 0.0,0.0
           l 3.0,4.0
@@ -293,15 +295,40 @@ module TestSvg = struct
           h 6.0
           Z
 
-          m 1.0,2.0
+          m 10.0,10.0
           l 3.0,4.0
           v 5.0
           h 6.0
           t 7.0,8.0
-          C 0.0,0.0,2.0,2.0,4.0,4.0
+          C 99.0,98.0,149.0,28.0,199.0,48.0
           Z\"
         />
       </svg>"]
+
+  let%expect_test "sub_to_path"=
+    let p1= Svg.Svg_path.sub_to_path path1 in
+    let prev= Path.end_of_path p1 in
+    let p2= Svg.Svg_path.sub_to_path ?prev path2 in
+    Path.path_to_string p1 |> print_endline;
+    [%expect {|
+      {
+        start: (1.0,2.0)
+        Line (4.0,6.0)
+        Line (4.0,11.0)
+        Line (10.0,11.0)
+      }
+      |}];
+    Path.path_to_string p2 |> print_endline;
+    [%expect {|
+      {
+        start: (20.0,21.0)
+        Line (23.0,25.0)
+        Line (23.0,30.0)
+        Line (29.0,30.0)
+        SQcurve (36.0,38.0)
+        Ccurve { ctrl1: (100.0,100.0); ctrl2: (150.0,30.0); end: (200.0,50.0) }
+      }
+      |}]
 
   let%expect_test "load_file"=
     (match Svg.load_file "a.svg" with
@@ -326,7 +353,7 @@ module TestSvg = struct
         />
       </svg>"]
 
-  let%expect_test "file_fit_frame"=
+  let%expect_test "file_fit_frame_a"=
     (match Svg.load_file "a.svg" with
     | Some svg->
       svg |> Svg.Adjust.viewBox_fitFrame_reset |> Svg.svg_string_of_t |> print_endline

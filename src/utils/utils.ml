@@ -12,7 +12,7 @@ open Result
 
 let string_of_float f=
   let str= string_of_float f in
-  if str.[String.length str - 1] == '.' then str ^ "0" else str
+  if String.ends_with ~suffix:"." str then str ^ "0" else str
 
 let xml_attr_opt name attrs=
   try Some (Ezxmlm.get_attr name attrs) with _-> None

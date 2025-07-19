@@ -61,8 +61,8 @@ type contour= {
 let string_of_contour_point point=
   sprintf "%s (%s,%s)"
     (string_of_contour_point_type point.typ)
-    (Utils.string_of_float point.p.x)
-    (Utils.string_of_float point.p.y)
+    (string_of_float point.p.x)
+    (string_of_float point.p.y)
 
 let glif_string_of_contour_point ?(indent=0) point=
   let indent_str= String.make indent ' ' in

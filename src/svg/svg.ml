@@ -8,12 +8,12 @@
  * This file is a part of Smaji_glyph_path.
  *)
 
-module Path = Svg_path
 module ViewBox = ViewBox
+module Svg_path = Svg_path
 
 type t= {
   viewBox: ViewBox.t;
-  paths: Path.t list;
+  paths: Svg_path.t list;
 }
 
 let svg_string_of_t ?(indent=0) t=
@@ -24,7 +24,7 @@ let svg_string_of_t ?(indent=0) t=
     |> List.map (fun path->
       sprintf "%s<path d=\"%s\"\n%s/>"
         (String.make (indent+step) ' ')
-        (Path.to_string_svg ~indent:(indent+step*2) path)
+        (Svg_path.to_string_svg ~indent:(indent+step*2) path)
         (String.make (indent+step) ' ')
       )
     |> String.concat "\n"
@@ -43,16 +43,16 @@ module Adjust = struct
     let dx= -. t.viewBox.min_x
     and dy= -. t.viewBox.min_y in
     let viewBox= { t.viewBox with min_x= 0.; min_y= 0. } in
-    let paths= t.paths |> List.map (Path.Adjust.translate ~dx ~dy) in
+    let paths= t.paths |> List.map (Svg_path.Adjust.translate ~dx ~dy) in
     { viewBox; paths }
 
   let viewBox_fitFrame t= t.paths
-    |> Path.get_frame_paths
+    |> Svg_path.get_frame_paths
     |> Option.map @@ fun frame->
-      let height= frame.Path.py -. frame.ny
-      and width= frame.px -. frame.nx
-      and min_x= frame.nx
-      and min_y= frame.ny in
+      let height= frame.Path.max_y -. frame.min_y
+      and width= frame.max_x -. frame.min_x
+      and min_x= frame.min_x
+      and min_y= frame.min_y in
       ViewBox.{ min_x; min_y; width; height }
 
   let viewBox_fitFrame_reset t=
@@ -68,11 +68,11 @@ module Adjust = struct
       width= viewBox.width *. x;
       height= viewBox.height *. y;
       }
-    and*) paths= List.map (Path.Adjust.scale ~x ~y) paths in
+    and*) paths= List.map (Svg_path.Adjust.scale ~x ~y) paths in
     { viewBox; paths }
 
   let translate ~dx ~dy svg=
-    let paths= List.map (Path.Adjust.translate ~dx ~dy) svg.paths in
+    let paths= List.map (Svg_path.Adjust.translate ~dx ~dy) svg.paths in
     { svg with paths }
 end
 
@@ -93,7 +93,7 @@ let of_xml_nodes nodes=
         |> get_paths
         |> List.map (fun (attrs, _)->
           Ezxmlm.get_attr "d" attrs)
-        |> List.filter_map Path.of_string
+        |> List.filter_map Svg_path.of_string
     in
     Some {viewBox; paths}
   | None-> None

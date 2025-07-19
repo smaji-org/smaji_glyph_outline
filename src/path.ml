@@ -8,23 +8,26 @@
  * This file is a part of Smaji_glyph_outline.
  *)
 
-open Point
+open Utils
+
+module Point = Point.PointF
+type point = Point.t
 
 type segment=
-  | Line of PointF.t
-  | Qcurve of { ctrl: PointF.t; end': PointF.t }
-  | Ccurve of { ctrl1: PointF.t; ctrl2:PointF.t; end': PointF.t }
-  | SQcurve of PointF.t
-  | SCcurve of { ctrl: PointF.t; end': PointF.t }
+  | Line of point
+  | Qcurve of { ctrl: point; end': point }
+  | Ccurve of { ctrl1: point; ctrl2:point; end': point }
+  | SQcurve of point
+  | SCcurve of { ctrl: point; end': point }
 
 type t= {
-  start: PointF.t;
+  start: point;
   segments: segment list;
 }
 
 type frame = {
-  min_x: PointF.cell; min_y: PointF.cell;
-  max_x: PointF.cell; max_y: PointF.cell;
+  min_x: Point.cell; min_y: Point.cell;
+  max_x: Point.cell; max_y: Point.cell;
 }
 
 let frame_dummy= {
@@ -36,17 +39,17 @@ let segment_to_string  ?(indent=0) segment=
   let open Printf in
   let indent= String.make indent ' ' in
   match segment with
-  | Line point-> sprintf "%sLine %s" indent (PointF.to_string point)
-  | Qcurve { ctrl; end' }-> sprintf "%sQcurve { ctrl: %s; end: %s; }" indent (PointF.to_string ctrl) (PointF.to_string end')
-  | Ccurve { ctrl1; ctrl2; end' }-> sprintf "%sCcurve { ctrl1: %s; ctrl2: %s; end: %s }" indent (PointF.to_string ctrl1) (PointF.to_string ctrl2)(PointF.to_string end')
-  | SQcurve point-> sprintf "%sSQcurve %s" indent (PointF.to_string point)
-  | SCcurve { ctrl; end' }-> sprintf "%sSCcurve { ctrl: %s; end: %s; }" indent (PointF.to_string ctrl) (PointF.to_string end')
+  | Line point-> sprintf "%sLine %s" indent (Point.to_string point)
+  | Qcurve { ctrl; end' }-> sprintf "%sQcurve { ctrl: %s; end: %s; }" indent (Point.to_string ctrl) (Point.to_string end')
+  | Ccurve { ctrl1; ctrl2; end' }-> sprintf "%sCcurve { ctrl1: %s; ctrl2: %s; end: %s }" indent (Point.to_string ctrl1) (Point.to_string ctrl2)(Point.to_string end')
+  | SQcurve point-> sprintf "%sSQcurve %s" indent (Point.to_string point)
+  | SCcurve { ctrl; end' }-> sprintf "%sSCcurve { ctrl: %s; end: %s; }" indent (Point.to_string ctrl) (Point.to_string end')
 
 
 let path_to_string ?(indent=0) path=
   let indent_str= String.make indent ' ' in
   let indent_str1= String.make (indent+2) ' ' in
-  let start= Printf.sprintf "start: %s" (PointF.to_string path.start) in
+  let start= Printf.sprintf "start: %s" (Point.to_string path.start) in
   let segements= path.segments
     |> List.map (segment_to_string ~indent:(indent+2))
     |> String.concat "\n"
@@ -71,7 +74,7 @@ let is_closed path=
 
 let is_open= Fun.negate is_closed
 
-let frame_update (point:PointF.t) frame=
+let frame_update (point:point) frame=
   let min_x= min point.x frame.min_x
   and min_y= min point.y frame.min_y
   and max_x= max point.x frame.max_x
@@ -84,6 +87,13 @@ let frame_merge f1 f2=
   and max_x= max f1.max_x f2.max_x
   and max_y= max f1.max_y f2.max_y in
   { min_x; min_y; max_x; max_y }
+
+let frame_to_string frame=
+  Printf.sprintf "{ min_x= %s; min_y= %s; max_x= %s; max_y= %s }"
+    (string_of_float frame.min_x)
+    (string_of_float frame.min_y)
+    (string_of_float frame.max_x)
+    (string_of_float frame.max_y)
 
 let frame_of_points points=
   List.fold_left (Fun.flip frame_update) frame_dummy points
@@ -104,9 +114,9 @@ let frame_segment prev segment=
 let frame path=
   let rec calc acc prev_ctrl prev_end segments=
     match segments with
-    | []-> acc
+    | []-> (acc, prev_end)
     | Line end' ::tl->
-      let acc= frame_update end' acc in
+      let acc= acc |> frame_update prev_end |> frame_update end' in
       calc acc None end' tl
     | Qcurve { ctrl; end' } ::tl->
       let acc= Bezier.plot_quadratic prev_end ctrl end'
@@ -123,7 +133,7 @@ let frame path=
     | SQcurve end' ::tl->
       let ctrl=
         match prev_ctrl with
-        | Some prev_ctrl-> PointF.(prev_end + prev_end - prev_ctrl)
+        | Some prev_ctrl-> Point.(prev_end + prev_end - prev_ctrl)
         | None-> prev_end
       in
       let acc= Bezier.plot_quadratic prev_end ctrl end'
@@ -134,7 +144,7 @@ let frame path=
     | SCcurve { ctrl=ctrl2; end' } ::tl->
       let ctrl1=
         match prev_ctrl with
-        | Some prev_ctrl-> PointF.(prev_end + prev_end - prev_ctrl)
+        | Some prev_ctrl-> Point.(prev_end + prev_end - prev_ctrl)
         | None-> prev_end
       in
       let acc= Bezier.plot_cubic prev_end ctrl1 ctrl2 end'
@@ -150,10 +160,10 @@ let frame path=
 
 let frame_algo_svg path=
   let rec calc acc prev prev_ctrl prev_end segments=
-    match segments with | []-> acc | segment::tl->
+    match segments with | []-> (acc, prev_end) | segment::tl->
     match segment with
     | Line end'->
-      let acc= frame_update end' acc in
+      let acc= acc |> frame_update prev_end |> frame_update end' in
       calc acc segment None end' tl
     | Qcurve { ctrl; end' }->
       let acc= Bezier.plot_quadratic prev_end ctrl end'
@@ -174,7 +184,7 @@ let frame_algo_svg path=
           (match prev with
           | Qcurve _
           | SQcurve _ ->
-            PointF.(prev_end + prev_end - prev_ctrl)
+            Point.(prev_end + prev_end - prev_ctrl)
           | _-> prev_end)
         | None-> prev_end
       in
@@ -190,7 +200,7 @@ let frame_algo_svg path=
           (match prev with
           | Ccurve _
           | SCcurve _ ->
-            PointF.(prev_end + prev_end - prev_ctrl)
+            Point.(prev_end + prev_end - prev_ctrl)
           | _-> prev_end)
         | None-> prev_end
       in

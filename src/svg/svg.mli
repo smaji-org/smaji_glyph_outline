@@ -8,13 +8,13 @@
  * This file is a part of Smaji_glyph_path.
  *)
 
-module Path = Svg_path
-(** Module Path *)
-
 module ViewBox = ViewBox
 (** Module ViewBox *)
 
-type t = { viewBox : ViewBox.t; paths : Path.t list; }
+module Svg_path = Svg_path
+(** Module Svg_path *)
+
+type t = { viewBox : ViewBox.t; paths : Svg_path.t list; }
 (** The type of svg, consists of viewBox and paths *)
 
 val svg_string_of_t : ?indent:int -> t -> string

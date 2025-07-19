@@ -9,6 +9,8 @@
  *)
 
 
+open Utils
+
 module PointI = struct
   type cell = int
   type t= {
@@ -106,8 +108,8 @@ module PointF = struct
   let ( / ) p1 p2= { x= p1.x/.p2.x; y= p1.y/.p2.y }
 
   let to_string p= Printf.sprintf "(%s,%s)"
-    (Utils.string_of_float p.x)
-    (Utils.string_of_float p.y)
+    (string_of_float p.x)
+    (string_of_float p.y)
 
   let distance (p1:t) (p2:t)=
     let difference= (p2 - p1) in
